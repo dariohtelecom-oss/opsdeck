@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.local
+
+# Environment & Secrets (Never commit credentials)
+.env
+.env.*
+!.env.example
+
+# Reference analysis binaries (>100MB GitHub limit)
+WinDockSetup.exe
+WinDock-android-debug.apk
+
+# OS & Editor files
+desktop.ini
+Thumbs.db
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
