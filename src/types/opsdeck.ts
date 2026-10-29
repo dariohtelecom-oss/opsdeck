@@ -1,7 +1,44 @@
-export type ConnectionRoute = 'LAN_TLS' | 'P2P_WEBRTC' | 'CLOUD_RELAY';
+export type ConnectionRoute = 'USB_ADB' | 'LAN_TLS' | 'P2P_WEBRTC' | 'CLOUD_RELAY';
 
 export type TaskPriority = 'critical' | 'high' | 'normal' | 'low';
 export type TaskStatus = 'urgent' | 'in_progress' | 'blocked' | 'completed';
+
+export type DeckContextId = 'default' | 'outlook' | 'itsm' | 'excel' | 'meeting';
+
+export interface DeckContextProfile {
+  id: DeckContextId;
+  label: string;
+  shortLabel: string;
+  activeAppTitle: string;
+  processHint: string;
+  badgeText: string;
+  tiles: DockTile[];
+}
+
+export interface TriageIncomingItem {
+  id: string;
+  sourcePlatform: 'Outlook 365' | 'ServiceNow' | 'Jira ITSM' | 'GLPI' | 'Zendesk';
+  externalId: string;
+  sender: string;
+  senderRole: string;
+  receivedAt: string;
+  subject: string;
+  snippet: string;
+  isActionable: boolean;
+  aiConfidence: number;
+  aiReasoning: string;
+  slaMinutes?: number;
+  suggestedStatus?: TaskStatus;
+  suggestedPriority?: TaskPriority;
+  suggestedProject?: string;
+  pcTrigger?: {
+    label: string;
+    appsToLaunch: string[];
+    urlOrPath: string;
+  };
+  processedIntoKanban?: boolean;
+  linkedTaskCode?: string;
+}
 
 export interface HostPC {
   id: string;
@@ -30,6 +67,7 @@ export interface OpsTask {
   estimatedMinutes: number;
   loggedMinutes: number;
   assignee: string;
+  sourceBadge?: string;
   pcTrigger?: {
     label: string;
     appsToLaunch: string[];
