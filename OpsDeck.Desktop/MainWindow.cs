@@ -62,6 +62,16 @@ namespace OpsDeck.Desktop
             InitializeHostServer();
             InitializeTray();
 
+            Load += (s, e) =>
+            {
+                try { File.AppendAllText(@"C:\Users\Viver\Desktop\opsdeck-debug.log", "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] Form Load event\r\n"); } catch { }
+            };
+
+            FormClosing += (s, e) =>
+            {
+                try { File.AppendAllText(@"C:\Users\Viver\Desktop\opsdeck-debug.log", "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] FormClosing: " + e.CloseReason + "\r\n"); } catch { }
+            };
+
             MouseDown += Form_MouseDown;
             MouseMove += Form_MouseMove;
             MouseUp += Form_MouseUp;
@@ -600,14 +610,15 @@ namespace OpsDeck.Desktop
             using (Font fTitle = new Font("Segoe UI", 12f, FontStyle.Bold))
             using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
             {
-                g.DrawString("Enlace Móvil Inmediato (Wi-Fi LAN / Código QR / USB)", fTitle, bWhite, x, y);
+                g.DrawString("Enlace Móvil Inmediato & Descarga de APK (Código QR Estándar)", fTitle, bWhite, x, y);
             }
 
             int qrSize = 220;
             int qrX = x + 30;
             int qrY = y + 60;
 
-            using (Bitmap qr = GenerateQrMatrix("http://" + server.PrimaryLanIp + ":8620", qrSize))
+            string mobileDownloadUrl = "http://" + server.PrimaryLanIp + ":8620/mobile";
+            using (Bitmap qr = GenerateQrMatrix(mobileDownloadUrl, qrSize))
             {
                 g.DrawImage(qr, qrX, qrY);
             }
@@ -625,15 +636,15 @@ namespace OpsDeck.Desktop
             using (SolidBrush bM = new SolidBrush(Color.FromArgb(148, 163, 184)))
             using (SolidBrush bCyan = new SolidBrush(Color.FromArgb(34, 211, 238)))
             {
-                g.DrawString("Paso 1: Conecta tu celular a la misma red Wi-Fi", fH, bW, infoX, qrY);
-                g.DrawString("Escanea el código QR de la izquierda o abre Chrome en el teléfono e ingresa:", fB, bM, infoX, qrY + 28);
-                g.DrawString("http://" + server.PrimaryLanIp + ":8620", fCode, bCyan, infoX, qrY + 54);
+                g.DrawString("1. Escanea el Código QR con la cámara de tu celular", fH, bW, infoX, qrY);
+                g.DrawString("Apunta tu cámara o app de escáner. Descargará OpsDeck Mobile automáticamente:", fB, bM, infoX, qrY + 28);
+                g.DrawString(mobileDownloadUrl, fCode, bCyan, infoX, qrY + 54);
 
-                g.DrawString("Paso 2: Descarga o instala la APK Nativa", fH, bW, infoX, qrY + 95);
-                g.DrawString("Descarga directa del instalador móvil:", fB, bM, infoX, qrY + 120);
+                g.DrawString("2. Descarga Directa en el Navegador de tu Celular", fH, bW, infoX, qrY + 95);
+                g.DrawString("Conecta tu celular a la misma red Wi-Fi y abre en Chrome:", fB, bM, infoX, qrY + 120);
                 g.DrawString("http://" + server.PrimaryLanIp + ":8620/download/apk", fCode, bCyan, infoX, qrY + 144);
 
-                g.DrawString("Paso 3: Conexión Cable USB (0 ms de latencia)", fH, bW, infoX, qrY + 185);
+                g.DrawString("3. Conexión Cable USB (0 ms de latencia)", fH, bW, infoX, qrY + 185);
                 g.DrawString("Conecta por cable USB y ejecuta en PowerShell:", fB, bM, infoX, qrY + 210);
                 g.DrawString("adb reverse tcp:8620 tcp:8620", fCode, bCyan, infoX, qrY + 234);
             }
@@ -641,46 +652,31 @@ namespace OpsDeck.Desktop
 
         private Bitmap GenerateQrMatrix(string payload, int size)
         {
-            Bitmap bmp = new Bitmap(size, size);
-            using (Graphics g = Graphics.FromImage(bmp))
+            try
             {
-                g.Clear(Color.FromArgb(248, 250, 252));
-                int grid = 21;
-                int cell = (size - 24) / grid;
-                int offset = (size - (cell * grid)) / 2;
-
-                using (SolidBrush dark = new SolidBrush(Color.FromArgb(11, 15, 25)))
+                using (QRCoder.QRCodeGenerator qrGen = new QRCoder.QRCodeGenerator())
                 {
-                    for (int r = 0; r < grid; r++)
+                    using (QRCoder.QRCodeData data = qrGen.CreateQrCode(payload, QRCoder.QRCodeGenerator.ECCLevel.M))
                     {
-                        for (int c = 0; c < grid; c++)
+                        using (QRCoder.QRCode qr = new QRCoder.QRCode(data))
                         {
-                            bool fill = false;
-                            bool inTL = r < 7 && c < 7;
-                            bool inTR = r < 7 && c >= grid - 7;
-                            bool inBL = r >= grid - 7 && c < 7;
-
-                            if (inTL || inTR || inBL)
-                            {
-                                int lr = inBL ? r - (grid - 7) : r;
-                                int lc = inTR ? c - (grid - 7) : c;
-                                fill = lr == 0 || lr == 6 || lc == 0 || lc == 6 || (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4);
-                            }
-                            else if (!(r < 8 && c < 8) && !(r < 8 && c >= grid - 8) && !(r >= grid - 8 && c < 8))
-                            {
-                                int h = (payload.GetHashCode() ^ (r * 31 + c * 17)) & 0x7fffffff;
-                                fill = (h % 10) < 5;
-                            }
-
-                            if (fill)
-                            {
-                                g.FillRectangle(dark, offset + c * cell, offset + r * cell, cell, cell);
-                            }
+                            Bitmap raw = qr.GetGraphic(8, Color.FromArgb(11, 15, 25), Color.FromArgb(248, 250, 252), true);
+                            Bitmap scaled = new Bitmap(raw, new Size(size, size));
+                            raw.Dispose();
+                            return scaled;
                         }
                     }
                 }
             }
-            return bmp;
+            catch
+            {
+                Bitmap fallback = new Bitmap(size, size);
+                using (Graphics g = Graphics.FromImage(fallback))
+                {
+                    g.Clear(Color.White);
+                }
+                return fallback;
+            }
         }
 
         protected override void OnMouseClick(MouseEventArgs e)

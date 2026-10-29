@@ -20,14 +20,23 @@ namespace OpsDeck.Desktop
         [STAThread]
         static void Main()
         {
-            bool createdNew;
-            singleInstanceMutex = new Mutex(true, "OpsDeck_Enterprise_Native_Mutex", out createdNew);
-
-            if (!createdNew)
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) =>
             {
-                MessageBox.Show("OpsDeck Enterprise ya se encuentra en ejecución en tu sistema.", "OpsDeck Enterprise", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
+                try
+                {
+                    System.IO.File.AppendAllText(@"C:\Users\Viver\Desktop\opsdeck-debug.log", "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] ThreadException: " + e.Exception.ToString() + "\r\n");
+                }
+                catch { }
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                try
+                {
+                    System.IO.File.AppendAllText(@"C:\Users\Viver\Desktop\opsdeck-debug.log", "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] AppDomain Exception: " + e.ExceptionObject.ToString() + "\r\n");
+                }
+                catch { }
+            };
 
             try
             {
@@ -35,9 +44,13 @@ namespace OpsDeck.Desktop
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new MainWindow());
             }
-            finally
+            catch (Exception ex)
             {
-                if (singleInstanceMutex != null) singleInstanceMutex.ReleaseMutex();
+                try
+                {
+                    System.IO.File.AppendAllText(@"C:\Users\Viver\Desktop\opsdeck-debug.log", "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] Main catch: " + ex.ToString() + "\r\n");
+                }
+                catch { }
             }
         }
     }

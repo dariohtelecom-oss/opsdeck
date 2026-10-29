@@ -25,12 +25,14 @@ Write-Host "--- 3. Packaging payload for installer directory ---"
 Copy-Item -Force $exeSrc (Join-Path $installerDir "OpsDeck.exe")
 Copy-Item -Force $apkSrc (Join-Path $installerDir "OpsDeck-Mobile.apk")
 Copy-Item -Force $iconSrc (Join-Path $installerDir "icon.ico")
+Copy-Item -Force (Join-Path $assetsDir "QRCoder.dll") (Join-Path $installerDir "QRCoder.dll")
 
 $desktopInstaller = "C:\Users\Viver\Desktop\OpsDeck-Installer-v2.5.exe"
 Copy-Item -Force $setupExe $desktopInstaller
 Copy-Item -Force $exeSrc "C:\Users\Viver\Desktop\OpsDeck.exe"
 Copy-Item -Force $apkSrc "C:\Users\Viver\Desktop\OpsDeck-Mobile.apk"
 Copy-Item -Force $iconSrc "C:\Users\Viver\Desktop\icon.ico"
+Copy-Item -Force (Join-Path $assetsDir "QRCoder.dll") "C:\Users\Viver\Desktop\QRCoder.dll"
 
 Unblock-File $desktopInstaller -ErrorAction SilentlyContinue
 Unblock-File (Join-Path $installerDir "OpsDeck-Setup.exe") -ErrorAction SilentlyContinue

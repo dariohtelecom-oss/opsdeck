@@ -3,7 +3,8 @@ Write-Host "     OPSDECK ENTERPRISE v2.5 - MASTER BUILD SYSTEM        "
 Write-Host "=========================================================="
 
 Write-Host "`n>>> [1/3] Compilando OpsDeck Desktop (.NET Nativo C#)..."
-& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /optimize+ /win32icon:"assets\icon.ico" /out:"OpsDeck.Desktop\OpsDeck.exe" /r:System.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Core.dll OpsDeck.Desktop\*.cs
+Copy-Item -Force "assets\QRCoder.dll" "OpsDeck.Desktop\QRCoder.dll"
+& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /optimize+ /win32icon:"assets\icon.ico" /out:"OpsDeck.Desktop\OpsDeck.exe" /r:System.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Core.dll /r:assets\QRCoder.dll OpsDeck.Desktop\*.cs
 if ($LASTEXITCODE -ne 0) { throw "Fallo compilando Desktop" }
 Write-Host "OpsDeck.Desktop compilado con exito."
 

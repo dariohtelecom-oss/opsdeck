@@ -191,14 +191,17 @@ namespace OpsDeck.Installer
                 string exeSrc = Path.Combine(srcBase, "OpsDeck.exe");
                 string apkSrc = Path.Combine(srcBase, "OpsDeck-Mobile.apk");
                 string iconSrc = Path.Combine(srcBase, "icon.ico");
+                string qrSrc = Path.Combine(srcBase, "QRCoder.dll");
 
                 string targetExe = Path.Combine(targetDir, "OpsDeck.exe");
                 string targetApk = Path.Combine(targetDir, "OpsDeck-Mobile.apk");
                 string targetIcon = Path.Combine(targetDir, "icon.ico");
+                string targetQr = Path.Combine(targetDir, "QRCoder.dll");
 
                 if (File.Exists(exeSrc)) File.Copy(exeSrc, targetExe, true);
                 if (File.Exists(apkSrc)) File.Copy(apkSrc, targetApk, true);
                 if (File.Exists(iconSrc)) File.Copy(iconSrc, targetIcon, true);
+                if (File.Exists(qrSrc)) File.Copy(qrSrc, targetQr, true);
 
                 lblStatus.Text = "Creando accesos directos en Escritorio y Menú Inicio...";
                 progressBar.Value = 75;
