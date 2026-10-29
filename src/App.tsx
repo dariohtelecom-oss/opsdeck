@@ -801,6 +801,33 @@ export default function App() {
     };
   }, [dragTile, dragTask, displayedTiles, tasks, activeContextId]);
 
+  // Multi-endpoint Host Agent resolver for USB (127.0.0.1:8620), Wi-Fi LAN (192.168.100.37:8620) & Cloud Tunnel
+  const candidateHostUrls = [
+    typeof window !== 'undefined' && window.location.origin.includes(':8620') ? window.location.origin : null,
+    'http://127.0.0.1:8620',
+    'http://localhost:8620',
+    'http://192.168.100.37:8620',
+    'https://7925183b0dcbc7.lhr.life'
+  ].filter(Boolean) as string[];
+
+  const fetchHostApi = async (path: string, options?: RequestInit): Promise<Response> => {
+    for (const base of candidateHostUrls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch(`${base}${path}`, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (res.ok) return res;
+      } catch {
+        // try next candidate
+      }
+    }
+    throw new Error(`Host agent unreachable for ${path}`);
+  };
+
   // ============================================================================
   // LIVE SYNC WITH OPSDECK HOST AGENT (:8620) — TRIPLE-FAILOVER & ACTIVE PC WINDOW
   // ============================================================================
@@ -808,7 +835,7 @@ export default function App() {
     let cancelled = false;
     const syncHostStatus = async () => {
       try {
-        const connRes = await fetch('http://localhost:8620/api/connection/status');
+        const connRes = await fetchHostApi('/api/connection/status');
         if (connRes.ok && !cancelled) {
           const connData = await connRes.json();
           setHostAgentOnline(true);
@@ -825,7 +852,7 @@ export default function App() {
 
       if (autoFollowPCWindow) {
         try {
-          const ctxRes = await fetch('http://localhost:8620/api/context/active');
+          const ctxRes = await fetchHostApi('/api/context/active');
           if (ctxRes.ok && !cancelled) {
             const ctxData = await ctxRes.json();
             if (ctxData.title) {
@@ -1012,7 +1039,7 @@ export default function App() {
     setIsAnalyzingIntake(true);
 
     try {
-      const res = await fetch('http://localhost:8620/api/intake/analyze', {
+      const res = await fetchHostApi('/api/intake/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1117,7 +1144,7 @@ export default function App() {
   const scanRealPCApps = async () => {
     setScanningLocalPC(true);
     try {
-      const res = await fetch('http://localhost:8620/api/apps/installed');
+      const res = await fetchHostApi('/api/apps/installed');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.apps) && data.apps.length > 0) {
@@ -1374,7 +1401,7 @@ export default function App() {
     if (tile.commandVerb.startsWith('launch:pcapp-')) {
       const appId = tile.commandVerb.replace('launch:', '');
       try {
-        await fetch('http://localhost:8620/api/apps/launch', {
+        await fetchHostApi('/api/apps/launch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: appId }),

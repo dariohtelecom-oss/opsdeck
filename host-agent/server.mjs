@@ -5,7 +5,12 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { existsSync, createReadStream, statSync } from 'node:fs';
-import { resolve, join, extname } from 'node:path';
+import { resolve, join, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const PROJECT_ROOT = resolve(__dirname, '..');
 
 const HOST_UUID = 'd9b2d63d-a233-4123-847a-68ffa8c00001';
 
@@ -325,9 +330,9 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
-  if (url.pathname === '/download/apk' && req.method === 'GET') {
-    const apkPath = resolve(process.cwd(), 'OpsDeck-Android-ES.apk');
-    const fallbackPath = resolve(process.cwd(), 'WinDock-android-debug.apk');
+  if (url.pathname === '/download/apk' && (req.method === 'GET' || req.method === 'HEAD')) {
+    const apkPath = resolve(PROJECT_ROOT, 'OpsDeck-Android-ES.apk');
+    const fallbackPath = resolve(PROJECT_ROOT, 'WinDock-android-debug.apk');
     const targetApk = existsSync(apkPath) ? apkPath : fallbackPath;
     if (!existsSync(targetApk)) {
       return sendJson(res, 404, { ok: false, error: 'APK file not found' });
@@ -339,11 +344,12 @@ const server = createServer(async (req, res) => {
       'content-length': String(stat.size),
       'access-control-allow-origin': '*',
     });
+    if (req.method === 'HEAD') return res.end();
     return createReadStream(targetApk).pipe(res);
   }
 
-  if (url.pathname === '/download/exe' && req.method === 'GET') {
-    const exePath = resolve(process.cwd(), 'OpsDeck.exe');
+  if (url.pathname === '/download/exe' && (req.method === 'GET' || req.method === 'HEAD')) {
+    const exePath = resolve(PROJECT_ROOT, 'OpsDeck.exe');
     if (!existsSync(exePath)) {
       return sendJson(res, 404, { ok: false, error: 'OpsDeck.exe not found' });
     }
@@ -354,6 +360,7 @@ const server = createServer(async (req, res) => {
       'content-length': String(stat.size),
       'access-control-allow-origin': '*',
     });
+    if (req.method === 'HEAD') return res.end();
     return createReadStream(exePath).pipe(res);
   }
 
@@ -468,7 +475,7 @@ const server = createServer(async (req, res) => {
 
   // Serve OpsDeck v2.5 static frontend from dist/ so Android APK WebView loads OpsDeck directly on :8620
   if (req.method === 'GET') {
-    const distDir = resolve(process.cwd(), 'dist');
+    const distDir = resolve(PROJECT_ROOT, 'dist');
     const cleanPath = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
     const candidate = resolve(distDir, cleanPath);
     const fileToServe =
