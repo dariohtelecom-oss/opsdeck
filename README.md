@@ -1,35 +1,49 @@
-# OpsDeck — Executive Stream Deck, Productivity Cockpit & Vitrea Kanban Suite
+# OpsDeck Enterprise v2.5 — Suite Nativa para Windows y Android
 
-**OpsDeck** es una plataforma multiplataforma (**Android, iOS, Tablet y PC Windows**) de control ejecutivo, botonera táctil configurable y gestión operativa en tiempo real.
+> **Arquitectura 100% Nativa**: Aplicación de escritorio en C# / .NET de alto rendimiento (sin navegadores ni wrappers web) + Aplicación móvil nativa en Java para Android.
 
-## ✨ Características Principales
+---
 
-- **Botonera Táctil Adaptativa (`Icon-Only`)**:
-  - Ajuste automático de densidad y grilla para **Móvil** y **Tablet** (horizontal y vertical).
-  - Escaneo e importación de aplicaciones instaladas del PC (`host-agent/server.mjs`) con sus logos oficiales.
-  - Física **Drag & Drop en vivo**: pesca cualquier aplicación para reubicarla con inclinación dinámica por velocidad (`Velocity Tilt`), slot punteado (`.vitrea-ph`), aterrizaje elástico (`Squash & Stretch`) y opción **Deshacer**.
-- **Entorno Unificado por Páginas (Cero Ventanas Emergentes)**:
-  - Navegación táctil continua en la ventana principal mediante indicadores superiores (`• • | • • •`) y **Cajón Inferior Integrado**:
-    1. **Botonera de Aplicaciones del PC**
-    2. **Executive Pulse & Métricas Animadas** (Anillos radiales, curva Spline con `<clipPath>` y mira interactiva, y barras verticales escalonadas)
-    3. **Tablero Kanban Drag & Drop (Estilo Vitrea `#/releases`)** (`Urgentes`, `En Curso`, `Bloqueadas`, `Completadas`)
-    4. **Touchpad Remoto & Firma Digital PNG**
-- **Sistema de Diseño Neu-Glass + Liquid Specular**:
-  - Paleta oceánica de 6 tonos (`#06141B`, `#11212D`, `#253745`, `#4A5C6A`, `#9BA8AB`, `#CCD0CF`).
-  - Refracción especular seguida por puntero (`--gx`, `--gy`), borde cónico (`conic-gradient`) y onda táctil (`Glass Ripple`).
+## 🏛️ Componentes del Sistema
 
-## 🚀 Ejecución Local
+### 1. `OpsDeck.Desktop` (C# .NET Windows Nativo)
+* **Centro de Mando Ejecutivo**: Renderizado gráfico directo con doble búfer (`DoubleBuffered GDI+`), tema Dark Slate (`#0B0F19`), barras animadas de métricas de telemetría (CPU, RAM, macros).
+* **Botonera Dinámica (Stream Deck)**: Detección Win32 de ventana activa (`GetForegroundWindow`) que adapta en vivo los botones según el programa que uses en tu PC (Excel, Outlook, Teams, Terminal, VS Code).
+* **Servidor Local Autónomo (`:8620`)**: Implementado en sockets C# puros con `HttpListener` y responder UDP (`:41234`) para descubrimiento automático en red Wi-Fi LAN con latencia de 2 a 4 ms.
+* **Agente IA de Triaje**: Motor local para clasificar requerimientos de correo (Outlook 365) y tickets TI (ServiceNow, Jira, GLPI) e inyectarlos con SLA al tablero Kanban.
+* **Panel Táctil & Firma**: Recepción de coordenadas del celular para mover el puntero del mouse del PC y firma digital vectorizada.
 
-```bash
-# 1. Instalar dependencias
-npm install
+### 2. `OpsDeck.Mobile` (Android Nativo)
+* Aplicación compilada directamente con el Android SDK (`javac` + `d8` + `aapt` + `zipalign` + `apksigner`).
+* Firma criptográfica **APK Signature Scheme v2 y v3**.
+* Vistas táctiles nativas con respuesta háptica (`Vibrator`).
+* Selector de idioma en tiempo real (**`🇪🇸 ES` / `🇺🇸 EN`**).
+* Auto-descubrimiento por paquetes UDP en la red local o conexión directa por cable USB.
 
-# 2. Iniciar interfaz OpsDeck (Web / Simulador APK Android / Móvil / PC)
-npm run dev
+### 3. `OpsDeck.Installer` (Instalador Oficial de Windows)
+* Asistente de instalación estándar en Windows (`OpsDeck-Installer-v2.5.exe`).
+* Permite seleccionar el directorio de destino.
+* Crea accesos directos en el **Escritorio** y en el **Menú Inicio**.
+* Registra la aplicación en **Configuración > Aplicaciones instaladas** de Windows con desinstalador.
 
-# 3. Iniciar Agente Host del PC (Puerto 8620 - Escaneo y lanzamiento de apps reales del PC)
-npm run host
+---
 
-# 4. Compilar para producción
-npm run build
+## 🚀 Compilación Completa
+
+Para compilar toda la suite desde cero en un solo comando:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-all.ps1
 ```
+
+---
+
+## 📱 Enlace PC ↔ Celular
+
+1. **Vía Wi-Fi LAN**:
+   - Conecta tu celular a la misma red Wi-Fi que el PC.
+   - En la aplicación móvil pulsa **Auto-Detectar PC por Wi-Fi** o escanea el código QR mostrado en la pestaña *5. Enlace Móvil*.
+2. **Vía Cable USB (Latencia 0 ms)**:
+   - Conecta tu teléfono con la depuración USB activa y ejecuta:
+     ```powershell
+     adb reverse tcp:8620 tcp:8620
+     ```

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpsDeck Mobile</string>
+    <string name="tab_botonera">Botonera</string>
+    <string name="tab_kanban">Kanban</string>
+    <string name="tab_touchpad">Touchpad</string>
+    <string name="tab_settings">Ajustes</string>
+</resources>
