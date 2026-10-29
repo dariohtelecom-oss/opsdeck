@@ -1,0 +1,14 @@
+{
+  "version": "2.5.0-enterprise",
+  "url": "https://dariohtelecom-oss.github.io/opsdeck/",
+  "releasePage": "https://github.com/dariohtelecom-oss/opsdeck",
+  "android": {
+    "versionCode": 25,
+    "versionName": "2.5.0-enterprise (ES/EN Cloud)",
+    "url": "https://raw.githubusercontent.com/dariohtelecom-oss/opsdeck/main/OpsDeck-Android-ES.apk"
+  },
+  "windows": {
+    "version": "2.5.0-enterprise",
+    "url": "https://github.com/dariohtelecom-oss/opsdeck"
+  }
+}

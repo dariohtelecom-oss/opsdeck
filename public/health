@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "app": "windock",
+  "product": "opsdeck-cloud",
+  "version": "2.5.0-enterprise",
+  "hostName": "OpsDeck Cloud (Dario_VC)",
+  "hostId": "d9b2d63d-a233-4123-847a-68ffa8c00001",
+  "platform": "windows"
+}

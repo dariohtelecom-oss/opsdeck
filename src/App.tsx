@@ -183,8 +183,27 @@ function spawnVitreaSparkles(cx: number, cy: number) {
 export default function App() {
   // Viewport mode: 'apk-sim' (Live Android APK Device Hub Simulator), 'mobile' (Fullscreen 100dvh), or 'pc' (Desktop Cockpit)
   const [viewMode, setViewMode] = useState<'pc' | 'mobile' | 'apk-sim'>(() =>
-    typeof window !== 'undefined' && window.innerWidth < 900 ? 'mobile' : 'apk-sim'
+    typeof window !== 'undefined' &&
+    (window.innerWidth < 900 ||
+      /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ||
+      'WinDockAndroid' in window)
+      ? 'mobile'
+      : 'apk-sim'
   );
+  // Idioma de la interfaz e instrucciones: Español ('es') por defecto, o Inglés ('en') a elección del usuario
+  const [lang, setLang] = useState<'es' | 'en'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('opsdeck_lang');
+      if (saved === 'es' || saved === 'en') return saved;
+    }
+    return 'es';
+  });
+  const handleSelectLang = (nextLang: 'es' | 'en') => {
+    setLang(nextLang);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('opsdeck_lang', nextLang);
+    }
+  };
   const [apkFormFactor, setApkFormFactor] = useState<'phone' | 'tablet'>('phone');
   const [apkOrientation, setApkOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [apkScreenState, setApkScreenState] = useState<'app' | 'launcher'>('app');
@@ -1594,6 +1613,7 @@ export default function App() {
       `${liveConnectionInfo.mobilePairingUrl}?host=${liveConnectionInfo.hostName}&key=ed25519`
     );
 
+    const isEs = lang === 'es';
     const channels: {
       route: ConnectionRoute;
       priority: string;
@@ -1604,41 +1624,52 @@ export default function App() {
     }[] = [
       {
         route: 'USB_ADB',
-        priority: 'PRIORIDAD 1 · CABLE USB DIRECTO',
-        title: 'Túnel USB ADB / USBMuxd (Inmune a Firewalls)',
+        priority: isEs ? 'PRIORIDAD 1 · CABLE USB DIRECTO' : 'PRIORITY 1 · DIRECT USB CABLE',
+        title: isEs
+          ? 'Túnel USB ADB / Tethering USB (Inmune a Firewalls)'
+          : 'USB ADB / USB Tethering Tunnel (Firewall-Immune)',
         subtitle:
           liveConnectionInfo.usbDevices.length > 0
-            ? `Dispositivo detectado: ${liveConnectionInfo.usbDevices[0].model} (${liveConnectionInfo.usbDevices[0].serial})`
-            : 'Canal directo por cable USB con 0% pérdida de paquetes y carga simultánea.',
+            ? isEs
+              ? `Dispositivo detectado: ${liveConnectionInfo.usbDevices[0].model} (${liveConnectionInfo.usbDevices[0].serial})`
+              : `Detected device: ${liveConnectionInfo.usbDevices[0].model} (${liveConnectionInfo.usbDevices[0].serial})`
+            : isEs
+            ? 'Canal directo por cable USB con 0% pérdida de paquetes y carga simultánea.'
+            : 'Direct USB cable channel with 0% packet loss and simultaneous charging.',
         latency: '1 ms',
-        badge: 'INFALIBLE',
+        badge: isEs ? 'INFALIBLE' : 'FAILSAFE',
       },
       {
         route: 'LAN_TLS',
-        priority: 'PRIORIDAD 2 · WI-FI LOCAL CORPORATIVO',
-        title: `mDNS Zero-Conf + WebSocket TLS 1.3 (${liveConnectionInfo.primaryLanIp})`,
-        subtitle:
-          'Descubrimiento directo en subred local sin pasar por servidores en la nube.',
+        priority: isEs ? 'PRIORIDAD 2 · WI-FI LOCAL CORPORATIVO' : 'PRIORITY 2 · CORPORATE LOCAL WI-FI',
+        title: `mDNS Zero-Conf + WebSocket TLS 1.3 (${liveConnectionInfo.primaryLanIp}:8620)`,
+        subtitle: isEs
+          ? 'Descubrimiento directo en subred local sin pasar por servidores en la nube.'
+          : 'Direct discovery on your local subnet without cloud servers.',
         latency: '4 ms',
-        badge: 'LAN DIRECTA',
+        badge: isEs ? 'LAN DIRECTA' : 'DIRECT LAN',
       },
       {
         route: 'P2P_WEBRTC',
-        priority: 'PRIORIDAD 3A · TÚNEL P2P NAT TRAVERSAL',
+        priority: isEs ? 'PRIORIDAD 3A · TÚNEL P2P NAT TRAVERSAL' : 'PRIORITY 3A · P2P NAT TRAVERSAL TUNNEL',
         title: 'WebRTC DataChannel E2EE (STUN / ICE)',
-        subtitle:
-          'Salto automático entre subredes corporativas o VPN con cifrado Ed25519.',
+        subtitle: isEs
+          ? 'Salto automático entre subredes corporativas o VPN con cifrado Ed25519.'
+          : 'Automatic jump across corporate subnets or VPN with Ed25519 encryption.',
         latency: '18 ms',
-        badge: 'P2P REMOTO',
+        badge: isEs ? 'P2P REMOTO' : 'REMOTE P2P',
       },
       {
         route: 'CLOUD_RELAY',
-        priority: 'PRIORIDAD 3B · TÚNEL SALIENTE PUERTO 443',
-        title: 'Cloud Relay HTTPS/WSS 443 (5G / Fuera de Oficina)',
-        subtitle:
-          'Si el firewall bloquea puertos locales, sale por el puerto estándar 443 HTTPS.',
+        priority: isEs ? 'PRIORIDAD 3B · TÚNEL SALIENTE PUERTO 443' : 'PRIORITY 3B · OUTBOUND PORT 443 TUNNEL',
+        title: isEs
+          ? 'Cloud Relay HTTPS/WSS 443 (5G / Fuera de Oficina)'
+          : 'Cloud Relay HTTPS/WSS 443 (5G / Out of Office)',
+        subtitle: isEs
+          ? 'Si el firewall bloquea puertos locales, sale por el puerto estándar 443 HTTPS.'
+          : 'If a firewall blocks local ports, traffic exits over standard HTTPS port 443.',
         latency: '28 ms',
-        badge: 'PUERTO 443',
+        badge: isEs ? 'PUERTO 443' : 'PORT 443',
       },
     ];
 
@@ -1651,27 +1682,125 @@ export default function App() {
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-4xl windock-glass rounded-3xl p-5 sm:p-6 space-y-5 text-[#CCD0CF] max-h-[92dvh] overflow-y-auto"
         >
-          <div className="flex items-center justify-between gap-4 border-b border-[#4A5C6A]/40 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#4A5C6A]/40 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl neuglass-pedestal grid place-items-center text-[#CCD0CF]">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#9BA8AB]">
-                  MOTOR TRIPLE-FAILOVER · OPSDECK.EXE DAEMON (:8620)
+                  {isEs
+                    ? 'INSTRUCCIONES Y MOTOR TRIPLE-FAILOVER · OPSDECK.EXE (:8620)'
+                    : 'INSTRUCTIONS & TRIPLE-FAILOVER ENGINE · OPSDECK.EXE (:8620)'}
                 </span>
                 <h2 className="text-lg sm:text-xl font-bold text-[#CCD0CF]">
-                  Centro de Enlace Infalible PC ↔ Móvil / Tablet
+                  {isEs
+                    ? 'Centro de Enlace e Instrucciones PC ↔ Móvil / Tablet'
+                    : 'PC ↔ Mobile / Tablet Connection & Instructions Center'}
                 </h2>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowPairingModal(false)}
-              className="w-9 h-9 rounded-xl neuglass-btn grid place-items-center text-[#9BA8AB] hover:text-[#CCD0CF]"
-            >
-              <X className="w-4 h-4" />
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Selector de Idioma: Español / English */}
+              <div className="flex items-center neu-well rounded-xl p-1 gap-1 border border-[#4A5C6A]/50">
+                <button
+                  type="button"
+                  onClick={() => handleSelectLang('es')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                    isEs
+                      ? 'neuglass-btn-primary shadow-sm'
+                      : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+                  }`}
+                >
+                  🇪🇸 Español
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectLang('en')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                    !isEs
+                      ? 'neuglass-btn-primary shadow-sm'
+                      : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+                  }`}
+                >
+                  🇺🇸 English
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPairingModal(false)}
+                className="w-9 h-9 rounded-xl neuglass-btn grid place-items-center text-[#9BA8AB] hover:text-[#CCD0CF]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Guía Paso a Paso Bilingüe (Traducción de las Instrucciones del APK Android) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="neuglass-panel rounded-2xl p-4 space-y-2 border border-[#CCD0CF]/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#253745] text-[#CCD0CF]">
+                  {isEs ? 'OPCIÓN A · CONEXIÓN POR CABLE USB' : 'OPTION A · CONNECT BY USB CABLE'}
+                </span>
+                <span className="text-[10px] font-mono text-[#9BA8AB]">0 ms</span>
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-[#CCD0CF]">
+                {isEs
+                  ? 'Instrucciones para conectar tu celular por USB'
+                  : 'Instructions to connect your phone via USB'}
+              </h3>
+              <ol className="text-[11px] text-[#9BA8AB] space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>
+                  {isEs
+                    ? 'Conecta tu teléfono al PC con un cable USB de datos.'
+                    : 'Connect your phone to the PC with a data-capable USB cable.'}
+                </li>
+                <li>
+                  {isEs
+                    ? 'En Ajustes de Android → Zona Wi-Fi / Anclaje de red, activa "Compartir conexión por USB" (USB Tethering).'
+                    : 'In Android Settings → Hotspot & tethering, turn on "USB tethering".'}
+                </li>
+                <li>
+                  {isEs
+                    ? 'Mantén OpsDeck ejecutándose en Windows y toca "Buscar PC por USB" (Find USB PC) en la app.'
+                    : 'Keep OpsDeck running on Windows, then return to the app and tap "Find USB PC".'}
+                </li>
+              </ol>
+            </div>
+
+            <div className="neuglass-panel rounded-2xl p-4 space-y-2 border border-[#CCD0CF]/25">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#253745] text-[#CCD0CF]">
+                  {isEs ? 'OPCIÓN B · CONEXIÓN POR WI-FI LAN' : 'OPTION B · CONNECT BY WI-FI LAN'}
+                </span>
+                <span className="text-[10px] font-mono text-[#9BA8AB]">&lt; 4 ms</span>
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-[#CCD0CF]">
+                {isEs
+                  ? 'Instrucciones para conectar por Wi-Fi sin cables'
+                  : 'Instructions to connect wirelessly via Wi-Fi'}
+              </h3>
+              <ol className="text-[11px] text-[#9BA8AB] space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>
+                  {isEs
+                    ? 'Conecta tu teléfono y tu PC a la misma red Wi-Fi local.'
+                    : 'Connect both your phone and PC to the same local Wi-Fi network.'}
+                </li>
+                <li>
+                  {isEs
+                    ? `En el APK toca "Conectar por Wi-Fi" (Connect by Wi-Fi) o escribe la dirección: ${liveConnectionInfo.primaryLanIp}:8620`
+                    : `In the APK tap "Connect by Wi-Fi" or enter the address: ${liveConnectionInfo.primaryLanIp}:8620`}
+                </li>
+                <li>
+                  {isEs
+                    ? `O abre directamente en Chrome del móvil: ${liveConnectionInfo.mobilePairingUrl}`
+                    : `Or open directly in mobile Chrome: ${liveConnectionInfo.mobilePairingUrl}`}
+                </li>
+              </ol>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
@@ -1679,7 +1808,9 @@ export default function App() {
             <div className="lg:col-span-5 neuglass-panel rounded-2xl p-4 flex flex-col items-center justify-between text-center space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#CCD0CF]">
                 <QrCode className="w-4 h-4" />
-                <span>Emparejamiento Instantáneo Ed25519</span>
+                <span>
+                  {isEs ? 'Emparejamiento Instantáneo QR' : 'Instant QR Pairing'}
+                </span>
               </div>
 
               <div className="p-3 rounded-2xl bg-[#CCD0CF] shadow-2xl border-4 border-[#253745]">
@@ -1703,15 +1834,27 @@ export default function App() {
 
               <div className="w-full space-y-1.5">
                 <div className="text-[10px] font-mono uppercase text-[#9BA8AB]">
-                  URL Directa Detectada en tu Red LAN
+                  {isEs ? 'Dirección del Servidor PC (APK / Web)' : 'PC Server Address (APK / Web)'}
                 </div>
                 <div className="px-3 py-1.5 rounded-xl neu-well font-mono text-xs font-bold text-[#CCD0CF] select-all">
-                  {liveConnectionInfo.mobilePairingUrl}
+                  {liveConnectionInfo.primaryLanIp}:8620
                 </div>
                 <p className="text-[11px] text-[#9BA8AB] leading-relaxed">
-                  Escanea con la cámara de tu teléfono o conecta el cable USB para enlazar con{' '}
-                  <strong className="text-[#CCD0CF]">{liveConnectionInfo.hostName}</strong> sin
-                  configurar IPs.
+                  {isEs ? (
+                    <>
+                      Escanea con tu cámara o ingresa{' '}
+                      <strong className="text-[#CCD0CF]">{liveConnectionInfo.primaryLanIp}:8620</strong> en la
+                      app de tu teléfono para enlazar con{' '}
+                      <strong className="text-[#CCD0CF]">{liveConnectionInfo.hostName}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Scan with your camera or enter{' '}
+                      <strong className="text-[#CCD0CF]">{liveConnectionInfo.primaryLanIp}:8620</strong> in
+                      your phone app to pair with{' '}
+                      <strong className="text-[#CCD0CF]">{liveConnectionInfo.hostName}</strong>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -1755,7 +1898,13 @@ export default function App() {
                           isCurrent ? 'text-[#CCD0CF]' : 'text-[#9BA8AB]'
                         }`}
                       >
-                        {isCurrent ? '● Canal Activo' : 'Activar'}
+                        {isCurrent
+                          ? isEs
+                            ? '● Canal Activo'
+                            : '● Active Channel'
+                          : isEs
+                          ? 'Activar'
+                          : 'Activate'}
                       </span>
                     </div>
                   </button>
@@ -2670,8 +2819,21 @@ export default function App() {
               />
             </div>
 
-            {/* Right Pure Icon-Only Quick Page Switchers */}
+            {/* Right Pure Icon-Only Quick Page Switchers + Language Toggle (ES / EN) */}
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSelectLang(lang === 'es' ? 'en' : 'es')}
+                title={
+                  lang === 'es'
+                    ? 'Cambiar idioma a Inglés (Switch to English)'
+                    : 'Switch language to Spanish (Cambiar a Español)'
+                }
+                className="px-2 h-8 rounded-xl neuglass-btn text-[10px] font-mono font-bold text-[#CCD0CF] flex items-center gap-1"
+              >
+                <span>{lang === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => navigateToEnvPage(analyticsPageIdx)}
@@ -3360,9 +3522,33 @@ export default function App() {
               className="w-full max-w-md windock-glass rounded-3xl p-5 space-y-4"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-[#CCD0CF]">Densidad de Íconos & Tema</h3>
+                <h3 className="text-sm font-bold text-[#CCD0CF]">
+                  {lang === 'es' ? 'Idioma, Densidad de Íconos & Tema' : 'Language, Icon Density & Theme'}
+                </h3>
                 <button onClick={() => setMobileModalSheet('none')}>
                   <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Selector de Idioma: Español / English */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSelectLang('es')}
+                  className={`py-2 rounded-xl border text-xs font-bold ${
+                    lang === 'es' ? 'neuglass-btn-primary' : 'neuglass-btn text-[#9BA8AB]'
+                  }`}
+                >
+                  🇪🇸 Español (Predeterminado)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectLang('en')}
+                  className={`py-2 rounded-xl border text-xs font-bold ${
+                    lang === 'en' ? 'neuglass-btn-primary' : 'neuglass-btn text-[#9BA8AB]'
+                  }`}
+                >
+                  🇺🇸 English
                 </button>
               </div>
 
@@ -3487,6 +3673,40 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Selector de Idioma: Español / English */}
+            <div className="flex items-center p-0.5 rounded-xl neu-well gap-0.5">
+              <button
+                type="button"
+                onClick={() => handleSelectLang('es')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition ${
+                  lang === 'es' ? 'neuglass-btn-primary' : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+                }`}
+              >
+                🇪🇸 ES
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectLang('en')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold transition ${
+                  lang === 'en' ? 'neuglass-btn-primary' : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+                }`}
+              >
+                🇺🇸 EN
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPairingModal(true)}
+              className="px-2.5 py-1 rounded-xl neuglass-btn text-[11px] font-semibold text-[#CCD0CF] flex items-center gap-1"
+              title={lang === 'es' ? 'Ver Instrucciones en Español / QR' : 'View Instructions / QR'}
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">
+                {lang === 'es' ? 'Instrucciones' : 'Instructions'}
+              </span>
+            </button>
+
             <div className="flex items-center p-0.5 rounded-xl neu-well gap-1">
               <button
                 onClick={() => {
@@ -3703,13 +3923,48 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center neu-well rounded-xl p-0.5 gap-0.5 border border-[#4A5C6A]/50">
+            <button
+              type="button"
+              onClick={() => handleSelectLang('es')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition ${
+                lang === 'es'
+                  ? 'neuglass-btn-primary'
+                  : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+              }`}
+              title="Idioma Español"
+            >
+              🇪🇸 ES
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectLang('en')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition ${
+                lang === 'en'
+                  ? 'neuglass-btn-primary'
+                  : 'text-[#9BA8AB] hover:text-[#CCD0CF]'
+              }`}
+              title="English Language"
+            >
+              🇺🇸 EN
+            </button>
+          </div>
+
           <button
             onClick={() => setShowPairingModal(true)}
             className="neuglass-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[#CCD0CF] text-xs font-semibold border border-[#CCD0CF]/35"
-            title="Abrir Centro de Enlace Infalible (USB 0ms + QR LAN + Túnel 443)"
+            title={
+              lang === 'es'
+                ? 'Abrir Centro de Enlace e Instrucciones (USB 0ms + QR LAN + Túnel 443)'
+                : 'Open Connection & Instructions Center (USB 0ms + LAN QR + 443 Tunnel)'
+            }
           >
             <QrCode className="w-4 h-4 text-[#CCD0CF]" />
-            <span className="hidden sm:inline">Enlace QR / USB ({currentHost.latencyMs}ms)</span>
+            <span className="hidden sm:inline">
+              {lang === 'es'
+                ? `Instrucciones / Enlace (${currentHost.latencyMs}ms)`
+                : `Instructions / Link (${currentHost.latencyMs}ms)`}
+            </span>
           </button>
 
           <button

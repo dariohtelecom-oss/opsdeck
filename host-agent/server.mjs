@@ -1,9 +1,13 @@
 import { createServer } from 'node:http';
+import { createSocket } from 'node:dgram';
 import { hostname, cpus, totalmem, freemem, platform, networkInterfaces } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, createReadStream, statSync } from 'node:fs';
+import { resolve, join, extname } from 'node:path';
+
+const HOST_UUID = 'd9b2d63d-a233-4123-847a-68ffa8c00001';
 
 const execFileAsync = promisify(execFile);
 const PORT = Number(process.env.OPSDECK_PORT) || 8620;
@@ -73,12 +77,16 @@ function getLocalLanIPs() {
 
 async function getUsbAdbDevices() {
   const adbCandidates = [
+    'C:\\Users\\Viver\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe',
     'C:\\Users\\Viver\\AppData\\AndroidCLI\\sdk\\platform-tools\\adb.exe',
     'adb',
   ];
   const adbBin = adbCandidates.find((p) => p === 'adb' || existsSync(p)) || 'adb';
   try {
-    const { stdout } = await execFileAsync(adbBin, ['devices', '-l'], { timeout: 3000 });
+    const { stdout } = await execFileAsync(adbBin, ['devices', '-l'], {
+      timeout: 3000,
+      env: { ...process.env, ADB_USB_LEGACY: '1', ADB_LIBUSB: '0' },
+    });
     const lines = stdout
       .split(/\r?\n/)
       .slice(1)
@@ -317,14 +325,31 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
+  if (url.pathname === '/download/apk' && req.method === 'GET') {
+    const apkPath = resolve(process.cwd(), 'WinDock-android-debug.apk');
+    if (!existsSync(apkPath)) {
+      return sendJson(res, 404, { ok: false, error: 'APK file not found' });
+    }
+    const stat = statSync(apkPath);
+    res.writeHead(200, {
+      'content-type': 'application/vnd.android.package-archive',
+      'content-disposition': 'attachment; filename="OpsDeck-Android.apk"',
+      'content-length': String(stat.size),
+      'access-control-allow-origin': '*',
+    });
+    return createReadStream(apkPath).pipe(res);
+  }
+
   if (url.pathname === '/health' && req.method === 'GET') {
     const usedMemPct = Math.round(((totalmem() - freemem()) / totalmem()) * 100);
     return sendJson(res, 200, {
       ok: true,
-      app: 'opsdeck-host',
+      app: 'windock',
+      product: 'opsdeck-host',
       version: '2.5.0-enterprise',
       hostName: hostname(),
-      platform: platform(),
+      hostId: HOST_UUID,
+      platform: 'windows',
       cpuCount: cpus().length,
       ramPercent: usedMemPct,
       lanIps: getLocalLanIPs(),
@@ -424,9 +449,58 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // Serve OpsDeck v2.5 static frontend from dist/ so Android APK WebView loads OpsDeck directly on :8620
+  if (req.method === 'GET') {
+    const distDir = resolve(process.cwd(), 'dist');
+    const cleanPath = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
+    const candidate = resolve(distDir, cleanPath);
+    const fileToServe =
+      candidate.startsWith(distDir) && existsSync(candidate) && statSync(candidate).isFile()
+        ? candidate
+        : join(distDir, 'index.html');
+
+    if (existsSync(fileToServe) && statSync(fileToServe).isFile()) {
+      const ext = extname(fileToServe).toLowerCase();
+      const mimeMap = {
+        '.html': 'text/html; charset=utf-8',
+        '.js': 'application/javascript; charset=utf-8',
+        '.css': 'text/css; charset=utf-8',
+        '.svg': 'image/svg+xml',
+        '.png': 'image/png',
+        '.json': 'application/json; charset=utf-8',
+      };
+      res.writeHead(200, {
+        'content-type': mimeMap[ext] || 'application/octet-stream',
+        'access-control-allow-origin': '*',
+      });
+      return createReadStream(fileToServe).pipe(res);
+    }
+  }
+
   return sendJson(res, 404, { error: 'Not found' });
 });
 
-server.listen(PORT, () => {
-  process.stdout.write(`OpsDeck Host Agent v2.5 listening on http://localhost:${PORT}\n`);
+server.listen(PORT, '0.0.0.0', () => {
+  process.stdout.write(`OpsDeck Host Agent v2.5 listening on http://0.0.0.0:${PORT}\n`);
 });
+
+// UDP 41234 Discovery Responder for Android APK ("windock:discover:v1" -> "windock:here:v1:http://IP:8620")
+try {
+  const udp = createSocket('udp4');
+  udp.on('message', (msg, rinfo) => {
+    const text = msg.toString('utf8').trim();
+    if (text.startsWith('windock:discover:v1')) {
+      const lanIps = getLocalLanIPs();
+      // Match subnet of sender if possible, otherwise use primary LAN IP
+      const senderPrefix = rinfo.address.split('.').slice(0, 3).join('.');
+      const matched =
+        lanIps.find((x) => x.address.startsWith(senderPrefix + '.')) || lanIps[0];
+      const hostIp = matched ? matched.address : '192.168.1.85';
+      const reply = Buffer.from(`windock:here:v1:http://${hostIp}:${PORT}`, 'utf8');
+      udp.send(reply, rinfo.port, rinfo.address);
+    }
+  });
+  udp.bind(41234, '0.0.0.0');
+} catch {
+  // UDP port already bound
+}
