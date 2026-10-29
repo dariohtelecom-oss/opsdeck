@@ -326,18 +326,35 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
   if (url.pathname === '/download/apk' && req.method === 'GET') {
-    const apkPath = resolve(process.cwd(), 'WinDock-android-debug.apk');
-    if (!existsSync(apkPath)) {
+    const apkPath = resolve(process.cwd(), 'OpsDeck-Android-ES.apk');
+    const fallbackPath = resolve(process.cwd(), 'WinDock-android-debug.apk');
+    const targetApk = existsSync(apkPath) ? apkPath : fallbackPath;
+    if (!existsSync(targetApk)) {
       return sendJson(res, 404, { ok: false, error: 'APK file not found' });
     }
-    const stat = statSync(apkPath);
+    const stat = statSync(targetApk);
     res.writeHead(200, {
       'content-type': 'application/vnd.android.package-archive',
-      'content-disposition': 'attachment; filename="OpsDeck-Android.apk"',
+      'content-disposition': 'attachment; filename="OpsDeck-Android-ES.apk"',
       'content-length': String(stat.size),
       'access-control-allow-origin': '*',
     });
-    return createReadStream(apkPath).pipe(res);
+    return createReadStream(targetApk).pipe(res);
+  }
+
+  if (url.pathname === '/download/exe' && req.method === 'GET') {
+    const exePath = resolve(process.cwd(), 'OpsDeck.exe');
+    if (!existsSync(exePath)) {
+      return sendJson(res, 404, { ok: false, error: 'OpsDeck.exe not found' });
+    }
+    const stat = statSync(exePath);
+    res.writeHead(200, {
+      'content-type': 'application/vnd.microsoft.portable-executable',
+      'content-disposition': 'attachment; filename="OpsDeck.exe"',
+      'content-length': String(stat.size),
+      'access-control-allow-origin': '*',
+    });
+    return createReadStream(exePath).pipe(res);
   }
 
   if (url.pathname === '/health' && req.method === 'GET') {

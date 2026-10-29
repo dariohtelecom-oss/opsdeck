@@ -182,14 +182,21 @@ function spawnVitreaSparkles(cx: number, cy: number) {
 
 export default function App() {
   // Viewport mode: 'apk-sim' (Live Android APK Device Hub Simulator), 'mobile' (Fullscreen 100dvh), or 'pc' (Desktop Cockpit)
-  const [viewMode, setViewMode] = useState<'pc' | 'mobile' | 'apk-sim'>(() =>
-    typeof window !== 'undefined' &&
-    (window.innerWidth < 900 ||
-      /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ||
-      'WinDockAndroid' in window)
-      ? 'mobile'
-      : 'apk-sim'
-  );
+  const [viewMode, setViewMode] = useState<'pc' | 'mobile' | 'apk-sim'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'pc') return 'pc';
+      if (params.get('mode') === 'mobile') return 'mobile';
+      if (
+        window.innerWidth < 900 ||
+        /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ||
+        'WinDockAndroid' in window
+      ) {
+        return 'mobile';
+      }
+    }
+    return 'pc';
+  });
   // Idioma de la interfaz e instrucciones: Español ('es') por defecto, o Inglés ('en') a elección del usuario
   const [lang, setLang] = useState<'es' | 'en'>(() => {
     if (typeof window !== 'undefined') {
