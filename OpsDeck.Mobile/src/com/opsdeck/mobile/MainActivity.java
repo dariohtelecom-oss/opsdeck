@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Vibrator;
@@ -78,17 +79,30 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         networkClient.startAutoDiscovery();
     }
 
+    private GradientDrawable createCardDrawable(String bgColor, String strokeColor, int strokeWidth, float cornerRadius) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(Color.parseColor(bgColor));
+        if (strokeColor != null) {
+            gd.setStroke(strokeWidth, Color.parseColor(strokeColor));
+        }
+        gd.setCornerRadius(cornerRadius);
+        return gd;
+    }
+
     private void populateDefaultData() {
-        tiles.add(new Models.DeckTile("t-excel", "Excel", "Planillas", "📊", "#22D3EE", "launch:excel", "Win+R"));
-        tiles.add(new Models.DeckTile("t-outlook", "Outlook", "Correo", "✉️", "#38BDF8", "launch:outlook", "Win+R"));
-        tiles.add(new Models.DeckTile("t-teams", "Teams", "Reunión", "👥", "#818CF8", "launch:teams", "Win+R"));
-        tiles.add(new Models.DeckTile("t-mute", "Mute Mic", "Silenciar", "🎙️", "#EF4444", "hotkey:ctrl+shift+m", "Ctrl+Shift+M"));
-        tiles.add(new Models.DeckTile("t-cam", "Cámara", "Video", "📹", "#FB923C", "hotkey:ctrl+shift+o", "Ctrl+Shift+O"));
-        tiles.add(new Models.DeckTile("t-save", "Guardar", "Atajo", "💾", "#34D399", "hotkey:ctrl+s", "Ctrl+S"));
+        tiles.add(new Models.DeckTile("t-excel", "Excel", "Planillas & BI", "📊", "#22D3EE", "launch:excel", "Win+R"));
+        tiles.add(new Models.DeckTile("t-outlook", "Outlook 365", "Bandeja Corp.", "✉️", "#38BDF8", "launch:outlook", "Win+R"));
+        tiles.add(new Models.DeckTile("t-teams", "MS Teams", "Reuniones", "👥", "#818CF8", "launch:teams", "Win+R"));
+        tiles.add(new Models.DeckTile("t-calc", "Calculadora", "Finanzas CLP", "🔢", "#34D399", "launch:calc", "Win+R"));
+        tiles.add(new Models.DeckTile("t-mute", "Silenciar Mic", "Micrófono", "🎙️", "#EF4444", "hotkey:ctrl+shift+m", "Ctrl+Shift+M"));
+        tiles.add(new Models.DeckTile("t-cam", "Cámara On/Off", "Video Conf.", "📹", "#FB923C", "hotkey:ctrl+shift+o", "Ctrl+Shift+O"));
+        tiles.add(new Models.DeckTile("t-save", "Guardar Todo", "Atajo Rápido", "💾", "#A78BFA", "hotkey:ctrl+s", "Ctrl+S"));
+        tiles.add(new Models.DeckTile("t-snip", "Captura", "Recortes", "✂️", "#2DD4BF", "launch:snippingtool", "Win+Shift+S"));
 
         cards.add(new Models.KanbanCard("c1", "INC-842", "Falla de enlace troncal FO Planta Sur", "Infraestructura", "critical", "urgent", "15 min", "ServiceNow"));
         cards.add(new Models.KanbanCard("c2", "TI-319", "Cierre balances financieros Q4", "Finanzas", "high", "in_progress", "45 min", "Outlook 365"));
         cards.add(new Models.KanbanCard("c3", "TI-205", "Renovación certificados TLS VPN", "Ciberseguridad", "medium", "in_progress", "2 hrs", "Jira ITSM"));
+        cards.add(new Models.KanbanCard("c4", "TI-104", "Actualización antivirus estación", "Soporte TI", "low", "completed", "Listo", "GLPI"));
     }
 
     private void buildNativeUi() {
@@ -96,16 +110,16 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(Color.parseColor("#0B0F19"));
 
-        // 1. Top Bar
+        // 1. Top Bar Ejecutivo
         LinearLayout topBar = new LinearLayout(this);
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setPadding(32, 28, 32, 28);
-        topBar.setBackgroundColor(Color.parseColor("#111827"));
+        topBar.setBackgroundColor(Color.parseColor("#0F172A"));
         topBar.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = new TextView(this);
         title.setText("OPSDECK");
-        title.setTextSize(18);
+        title.setTextSize(17);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setTextColor(Color.parseColor("#F8FAFC"));
         topBar.addView(title);
@@ -122,8 +136,8 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         langToggleBtn.setText(lang.equals("es") ? "🇪🇸 ES" : "🇺🇸 EN");
         langToggleBtn.setTextSize(11);
         langToggleBtn.setTextColor(Color.parseColor("#22D3EE"));
-        langToggleBtn.setBackgroundColor(Color.parseColor("#1F2937"));
-        langToggleBtn.setPadding(20, 8, 20, 8);
+        langToggleBtn.setBackground(createCardDrawable("#1E293B", "#334155", 1, 16f));
+        langToggleBtn.setPadding(24, 8, 24, 8);
         langToggleBtn.setOnClickListener(this);
         topBar.addView(langToggleBtn);
 
@@ -137,10 +151,10 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         );
         rootLayout.addView(contentContainer, cParams);
 
-        // 3. Bottom Navigation Bar
+        // 3. Bottom Navigation Bar Ejecutivo
         bottomNav = new LinearLayout(this);
         bottomNav.setOrientation(LinearLayout.HORIZONTAL);
-        bottomNav.setBackgroundColor(Color.parseColor("#111827"));
+        bottomNav.setBackgroundColor(Color.parseColor("#0F172A"));
         bottomNav.setPadding(12, 16, 12, 16);
 
         String[] tabs = lang.equals("es")
@@ -200,13 +214,13 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
         TextView header = new TextView(this);
         header.setText(lang.equals("es") ? "Botonera Táctil en Vivo" : "Live Touch Deck");
-        header.setTextSize(16);
+        header.setTextSize(17);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         header.setTextColor(Color.parseColor("#F8FAFC"));
         inner.addView(header);
 
         TextView sub = new TextView(this);
-        sub.setText(lang.equals("es") ? "Toca cualquier botón para ejecutarlo en tu PC al instante." : "Tap any button to execute on PC instantly.");
+        sub.setText(lang.equals("es") ? "Toca cualquier tarjeta con respuesta háptica para accionarla en el PC." : "Tap any tile with haptic feedback to execute on PC.");
         sub.setTextSize(12);
         sub.setTextColor(Color.parseColor("#94A3B8"));
         sub.setPadding(0, 4, 0, 24);
@@ -215,14 +229,14 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(2);
 
-        int btnWidth = (getResources().getDisplayMetrics().widthPixels - 72) / 2;
+        int btnWidth = (getResources().getDisplayMetrics().widthPixels - 76) / 2;
 
         for (int i = 0; i < tiles.size(); i++) {
             final Models.DeckTile tile = tiles.get(i);
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            card.setBackgroundColor(Color.parseColor("#1E293B"));
-            card.setPadding(24, 28, 24, 28);
+            card.setBackground(createCardDrawable("#151D2E", "#1E293B", 1, 20f));
+            card.setPadding(24, 24, 24, 24);
             card.setTag(tile);
             card.setOnClickListener(this);
 
@@ -233,7 +247,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
             TextView glyph = new TextView(this);
             glyph.setText(tile.glyph);
             glyph.setTextSize(24);
-            glyph.setPadding(0, 16, 0, 8);
+            glyph.setPadding(0, 14, 0, 8);
             card.addView(glyph);
 
             TextView lbl = new TextView(this);
@@ -268,7 +282,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
         TextView header = new TextView(this);
         header.setText(lang.equals("es") ? "Tablero Kanban & Tareas IA" : "Kanban Board & AI Tasks");
-        header.setTextSize(16);
+        header.setTextSize(17);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         header.setTextColor(Color.parseColor("#F8FAFC"));
         inner.addView(header);
@@ -277,7 +291,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
             Models.KanbanCard c = cards.get(i);
             LinearLayout item = new LinearLayout(this);
             item.setOrientation(LinearLayout.VERTICAL);
-            item.setBackgroundColor(Color.parseColor("#1E293B"));
+            item.setBackground(createCardDrawable("#151D2E", "#1E293B", 1, 18f));
             item.setPadding(24, 20, 24, 20);
 
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -298,7 +312,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
             item.addView(title);
 
             TextView sla = new TextView(this);
-            sla.setText("SLA: " + c.dueTime + " · " + c.project);
+            sla.setText("⏱ SLA: " + c.dueTime + " · " + c.project);
             sla.setTextSize(11);
             sla.setTextColor(Color.parseColor("#94A3B8"));
             item.addView(sla);
@@ -317,14 +331,14 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
         TextView header = new TextView(this);
         header.setText(lang.equals("es") ? "Touchpad Remoto (0 ms)" : "Remote Touchpad (0 ms)");
-        header.setTextSize(16);
+        header.setTextSize(17);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         header.setTextColor(Color.parseColor("#F8FAFC"));
         inner.addView(header);
 
         View pad = new View(this);
         pad.setId(ID_TOUCHPAD_SURFACE);
-        pad.setBackgroundColor(Color.parseColor("#1E293B"));
+        pad.setBackground(createCardDrawable("#0F172A", "#22D3EE", 2, 22f));
         LinearLayout.LayoutParams padParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f
         );
@@ -333,25 +347,31 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
         inner.addView(pad, padParams);
 
-        // Buttons for Left / Right click
+        // Botones de Clic Izquierdo y Derecho con hápticos
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
 
         Button leftBtn = new Button(this);
         leftBtn.setId(ID_CLICK_LEFT);
-        leftBtn.setText(lang.equals("es") ? "Clic Izquierdo" : "Left Click");
-        leftBtn.setBackgroundColor(Color.parseColor("#1F2937"));
+        leftBtn.setText(lang.equals("es") ? "CLIC IZQUIERDO" : "LEFT CLICK");
+        leftBtn.setBackground(createCardDrawable("#1E293B", "#334155", 1, 16f));
         leftBtn.setTextColor(Color.WHITE);
+        leftBtn.setTypeface(Typeface.DEFAULT_BOLD);
         leftBtn.setOnClickListener(this);
-        btnRow.addView(leftBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));
+        LinearLayout.LayoutParams lParams = new LinearLayout.LayoutParams(0, 120, 1.0f);
+        lParams.setMargins(0, 0, 8, 0);
+        btnRow.addView(leftBtn, lParams);
 
         Button rightBtn = new Button(this);
         rightBtn.setId(ID_CLICK_RIGHT);
-        rightBtn.setText(lang.equals("es") ? "Clic Derecho" : "Right Click");
-        rightBtn.setBackgroundColor(Color.parseColor("#1F2937"));
+        rightBtn.setText(lang.equals("es") ? "CLIC DERECHO" : "RIGHT CLICK");
+        rightBtn.setBackground(createCardDrawable("#1E293B", "#334155", 1, 16f));
         rightBtn.setTextColor(Color.WHITE);
+        rightBtn.setTypeface(Typeface.DEFAULT_BOLD);
         rightBtn.setOnClickListener(this);
-        btnRow.addView(rightBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));
+        LinearLayout.LayoutParams rParams = new LinearLayout.LayoutParams(0, 120, 1.0f);
+        rParams.setMargins(8, 0, 0, 0);
+        btnRow.addView(rightBtn, rParams);
 
         inner.addView(btnRow);
         contentContainer.addView(inner);
@@ -365,7 +385,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
         TextView header = new TextView(this);
         header.setText(lang.equals("es") ? "Ajustes de Conexión" : "Connection Settings");
-        header.setTextSize(16);
+        header.setTextSize(17);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         header.setTextColor(Color.parseColor("#F8FAFC"));
         inner.addView(header);
@@ -379,26 +399,34 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         ipInput = new EditText(this);
         ipInput.setText(networkClient.getHostUrl());
         ipInput.setTextColor(Color.WHITE);
-        ipInput.setBackgroundColor(Color.parseColor("#1E293B"));
-        ipInput.setPadding(20, 16, 20, 16);
+        ipInput.setBackground(createCardDrawable("#151D2E", "#1E293B", 1, 14f));
+        ipInput.setPadding(24, 20, 24, 20);
         inner.addView(ipInput);
 
         Button connectBtn = new Button(this);
         connectBtn.setId(ID_CONNECT_MANUAL);
         connectBtn.setText(lang.equals("es") ? "Conectar Manualmente" : "Connect Manually");
-        connectBtn.setBackgroundColor(Color.parseColor("#22D3EE"));
+        connectBtn.setBackground(createCardDrawable("#22D3EE", null, 0, 14f));
         connectBtn.setTextColor(Color.parseColor("#0B0F19"));
         connectBtn.setTypeface(Typeface.DEFAULT_BOLD);
         connectBtn.setOnClickListener(this);
-        inner.addView(connectBtn);
+        LinearLayout.LayoutParams btnP1 = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnP1.setMargins(0, 20, 0, 12);
+        inner.addView(connectBtn, btnP1);
 
         Button scanBtn = new Button(this);
         scanBtn.setId(ID_SCAN_UDP);
         scanBtn.setText(lang.equals("es") ? "Auto-Detectar PC por Wi-Fi (UDP)" : "Auto-Detect PC on Wi-Fi");
-        scanBtn.setBackgroundColor(Color.parseColor("#1F2937"));
+        scanBtn.setBackground(createCardDrawable("#1E293B", "#334155", 1, 14f));
         scanBtn.setTextColor(Color.WHITE);
         scanBtn.setOnClickListener(this);
         inner.addView(scanBtn);
+
+        TextView diag = new TextView(this);
+        diag.setText(lang.equals("es") ? "\n• Puerto UDP: 41234\n• Puerto HTTP: 8620\n• Latencia estimada: < 2 ms" : "\n• UDP Port: 41234\n• HTTP Port: 8620\n• Estimated Latency: < 2 ms");
+        diag.setTextColor(Color.parseColor("#64748B"));
+        diag.setTextSize(12);
+        inner.addView(diag);
 
         scroll.addView(inner);
         contentContainer.addView(scroll);
@@ -406,6 +434,7 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
 
     @Override
     public void onClick(View v) {
+        triggerHaptic();
         int id = v.getId();
 
         if (id == ID_LANG_BTN) {
@@ -424,89 +453,152 @@ public class MainActivity extends Activity implements NetworkClient.OnConnectedL
         }
 
         if (id == ID_CLICK_LEFT) {
-            if (vibrator != null) vibrator.vibrate(15);
             networkClient.sendTouchpad(0, 0, "click");
             return;
         }
 
         if (id == ID_CLICK_RIGHT) {
-            if (vibrator != null) vibrator.vibrate(15);
             networkClient.sendTouchpad(0, 0, "rightclick");
             return;
         }
 
         if (id == ID_CONNECT_MANUAL) {
             if (ipInput != null) {
-                String u = ipInput.getText().toString().trim();
-                networkClient.checkConnection(u);
+                String manual = ipInput.getText().toString().trim();
+                networkClient.setHostUrl(manual);
+                networkClient.syncTiles();
+                networkClient.syncKanban();
             }
             return;
         }
 
         if (id == ID_SCAN_UDP) {
+            statusBadge.setText("  ● Buscando...");
+            statusBadge.setTextColor(Color.parseColor("#FBBF24"));
             networkClient.startAutoDiscovery();
-            Toast.makeText(this, "Buscando...", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Check if it's a DeckTile card tag
-        Object tag = v.getTag();
-        if (tag instanceof Models.DeckTile) {
-            Models.DeckTile tile = (Models.DeckTile) tag;
-            if (vibrator != null) vibrator.vibrate(20);
+        if (v.getTag() instanceof Models.DeckTile) {
+            Models.DeckTile tile = (Models.DeckTile) v.getTag();
             networkClient.sendTrigger(tile.id, tile.command);
-            Toast.makeText(this, "PC: " + tile.label, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, (lang.equals("es") ? "Ejecutando: " : "Triggering: ") + tile.label, Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         if (v.getId() == ID_TOUCHPAD_SURFACE) {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    lastTouchX = event.getX();
-                    lastTouchY = event.getY();
-                    touchDownTime = System.currentTimeMillis();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    float dx = event.getX() - lastTouchX;
-                    float dy = event.getY() - lastTouchY;
-                    lastTouchX = event.getX();
-                    lastTouchY = event.getY();
-                    if (Math.abs(dx) > 0.5f || Math.abs(dy) > 0.5f) {
-                        networkClient.sendTouchpad((int)(dx * 1.8f), (int)(dy * 1.8f), "move");
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    if (System.currentTimeMillis() - touchDownTime < 180) {
-                        if (vibrator != null) vibrator.vibrate(10);
-                        networkClient.sendTouchpad(0, 0, "click");
-                    }
-                    break;
+            int action = event.getActionMasked();
+            float x = event.getX();
+            float y = event.getY();
+
+            if (action == MotionEvent.ACTION_DOWN) {
+                lastTouchX = x;
+                lastTouchY = y;
+                touchDownTime = System.currentTimeMillis();
+                return true;
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                float dx = (x - lastTouchX) * 1.5f;
+                float dy = (y - lastTouchY) * 1.5f;
+                lastTouchX = x;
+                lastTouchY = y;
+
+                if (Math.abs(dx) > 0.5f || Math.abs(dy) > 0.5f) {
+                    networkClient.sendTouchpad((int) dx, (int) dy, "move");
+                }
+                return true;
+            } else if (action == MotionEvent.ACTION_UP) {
+                long duration = System.currentTimeMillis() - touchDownTime;
+                if (duration < 180) {
+                    networkClient.sendTouchpad(0, 0, "click");
+                    triggerHaptic();
+                }
+                return true;
             }
-            return true;
         }
         return false;
     }
 
-    @Override
-    public void onConnected(String url) {
-        statusBadge.setText("  ● PC: " + url.replace("http://", ""));
-        statusBadge.setTextColor(Color.parseColor("#22C55E"));
-        Toast.makeText(this, "Enlazado a " + url, Toast.LENGTH_SHORT).show();
+    private void triggerHaptic() {
+        if (vibrator != null) {
+            try {
+                vibrator.vibrate(35);
+            } catch (Exception ignored) { }
+        }
     }
 
     @Override
-    public void onTilesUpdated(List<Models.DeckTile> newTiles) {
-        this.tiles.clear();
-        this.tiles.addAll(newTiles);
-        if (activeTab == 0) renderBotoneraView();
+    public void onConnected(final String url) {
+        runOnUiThread(new OnConnectedRunnable(this, url));
     }
 
     @Override
-    public void onKanbanUpdated(List<Models.KanbanCard> newCards) {
-        this.cards.clear();
-        this.cards.addAll(newCards);
-        if (activeTab == 1) renderKanbanView();
+    public void onTilesUpdated(final List<Models.DeckTile> loadedTiles) {
+        runOnUiThread(new OnTilesUpdatedRunnable(this, loadedTiles));
+    }
+
+    @Override
+    public void onKanbanUpdated(final List<Models.KanbanCard> loadedCards) {
+        runOnUiThread(new OnKanbanUpdatedRunnable(this, loadedCards));
+    }
+
+    static class OnConnectedRunnable implements Runnable {
+        private final MainActivity activity;
+        private final String url;
+
+        public OnConnectedRunnable(MainActivity activity, String url) {
+            this.activity = activity;
+            this.url = url;
+        }
+
+        @Override
+        public void run() {
+            activity.statusBadge.setText(activity.lang.equals("es") ? "  ● CONECTADO PC" : "  ● PC CONNECTED");
+            activity.statusBadge.setTextColor(Color.parseColor("#34D399"));
+            if (activity.ipInput != null) activity.ipInput.setText(url);
+        }
+    }
+
+    static class OnTilesUpdatedRunnable implements Runnable {
+        private final MainActivity activity;
+        private final List<Models.DeckTile> loadedTiles;
+
+        public OnTilesUpdatedRunnable(MainActivity activity, List<Models.DeckTile> loadedTiles) {
+            this.activity = activity;
+            this.loadedTiles = loadedTiles;
+        }
+
+        @Override
+        public void run() {
+            if (loadedTiles != null && !loadedTiles.isEmpty()) {
+                activity.tiles.clear();
+                activity.tiles.addAll(loadedTiles);
+                if (activity.activeTab == 0) {
+                    activity.renderBotoneraView();
+                }
+            }
+        }
+    }
+
+    static class OnKanbanUpdatedRunnable implements Runnable {
+        private final MainActivity activity;
+        private final List<Models.KanbanCard> loadedCards;
+
+        public OnKanbanUpdatedRunnable(MainActivity activity, List<Models.KanbanCard> loadedCards) {
+            this.activity = activity;
+            this.loadedCards = loadedCards;
+        }
+
+        @Override
+        public void run() {
+            if (loadedCards != null && !loadedCards.isEmpty()) {
+                activity.cards.clear();
+                activity.cards.addAll(loadedCards);
+                if (activity.activeTab == 1) {
+                    activity.renderKanbanView();
+                }
+            }
+        }
     }
 }
