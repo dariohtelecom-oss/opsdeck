@@ -349,14 +349,16 @@ const server = createServer(async (req, res) => {
   }
 
   if (url.pathname === '/download/exe' && (req.method === 'GET' || req.method === 'HEAD')) {
-    const exePath = resolve(PROJECT_ROOT, 'OpsDeck.exe');
+    const installerPath = resolve(PROJECT_ROOT, 'release/OpsDeck Enterprise Setup 2.5.0.exe');
+    const standalonePath = resolve(PROJECT_ROOT, 'OpsDeck.exe');
+    const exePath = existsSync(installerPath) ? installerPath : standalonePath;
     if (!existsSync(exePath)) {
-      return sendJson(res, 404, { ok: false, error: 'OpsDeck.exe not found' });
+      return sendJson(res, 404, { ok: false, error: 'OpsDeck installer not found' });
     }
     const stat = statSync(exePath);
     res.writeHead(200, {
       'content-type': 'application/vnd.microsoft.portable-executable',
-      'content-disposition': 'attachment; filename="OpsDeck.exe"',
+      'content-disposition': 'attachment; filename="OpsDeck-Enterprise-Instalador-v2.5.exe"',
       'content-length': String(stat.size),
       'access-control-allow-origin': '*',
     });

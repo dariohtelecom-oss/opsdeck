@@ -1,14 +1,51 @@
 {
   "name": "opsdeck-suite",
-  "version": "1.0.0",
+  "version": "2.5.0",
   "private": true,
   "description": "OpsDeck — Enterprise Remote PC Controller, Operations Dashboard, Meetings, Messaging & Process Automation (iOS, Android & Desktop)",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "host": "node host-agent/server.mjs"
+    "host": "node host-agent/server.mjs",
+    "electron:start": "electron electron/main.cjs",
+    "build:installer": "vite build && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.opsdeck.enterprise",
+    "productName": "OpsDeck Enterprise",
+    "copyright": "Copyright © 2026 OpsDeck Enterprise",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "host-agent/**/*",
+      "public/**/*",
+      "OpsDeck-Android-ES.apk",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OpsDeck Enterprise",
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "installerHeaderIcon": "public/icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
@@ -21,6 +58,8 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
