@@ -15,21 +15,33 @@ namespace OpsDeck.Desktop
         private System.Windows.Forms.Timer windowTrackerTimer;
         private System.Windows.Forms.Timer toastTimer;
 
-        // Visual State
+        // Visual Interactive State
         private int activeNavIndex = 0;
         private int hoveredNavIndex = -1;
         private int hoveredTileIndex = -1;
         private bool isHoverClose = false;
         private bool isHoverMin = false;
         private bool isHoverCopyUrl = false;
+        private bool isHoverCta = false;
         private Rectangle copyUrlRect = Rectangle.Empty;
+        private Rectangle ctaButtonRect = Rectangle.Empty;
+
+        // EchoFi / Neo-FinTech Color Palette Tokens
+        private static readonly Color ColorCanvasBg = Color.FromArgb(9, 10, 15);           // #090A0F Deep Obsidian
+        private static readonly Color ColorGlassCard = Color.FromArgb(200, 18, 20, 29);     // #12141D Frosted Glass
+        private static readonly Color ColorGlassElevated = Color.FromArgb(230, 26, 29, 42); // Elevated Glass
+        private static readonly Color ColorIceCyan = Color.FromArgb(194, 244, 255);         // #C2F4FF Ice Cyan Glow
+        private static readonly Color ColorLavender = Color.FromArgb(198, 192, 255);        // #C6C0FF Pastel Lavender
+        private static readonly Color ColorMintGreen = Color.FromArgb(177, 255, 194);       // #B1FFC2 Mint Green
+        private static readonly Color ColorPureWhite = Color.FromArgb(255, 255, 255);       // #FFFFFF Crisp White
+        private static readonly Color ColorMutedSlate = Color.FromArgb(138, 143, 158);      // #8A8F9E Secondary Text
 
         private readonly string[] navLabels = new string[]
         {
-            "🎛️  Botonera Dinámica",
-            "📈  Métricas & Telemetría",
+            "🎛️  Botonera",
+            "📈  Telemetría & Gráficos",
             "📋  Tablero Kanban IA",
-            "🖱️  Panel Táctil & Firma",
+            "🖱️  Panel Táctil 3D",
             "📱  Enlace Móvil (QR)"
         };
 
@@ -43,16 +55,17 @@ namespace OpsDeck.Desktop
         private List<KanbanTask> tasks;
         private List<TriageIncomingItem> triageFeed;
 
-        // Telemetry
-        private float cpuPercent = 14f;
-        private float ramPercent = 48f;
+        // Telemetry History (Sparkline + Volume Bars)
+        private float cpuPercent = 18.4f;
+        private float ramPercent = 48.2f;
         private readonly Queue<float> cpuHistory = new Queue<float>();
         private readonly Queue<float> ramHistory = new Queue<float>();
-        private const int MaxHistoryPoints = 32;
+        private readonly List<float> volumeBars = new List<float>();
+        private const int MaxHistoryPoints = 36;
 
         private string currentActiveWindow = "OpsDeck Enterprise";
         private string currentProfileName = "General de Oficina";
-        private int totalCommandsExecuted = 28;
+        private int totalCommandsExecuted = 42;
 
         // Interactive Toast Feedback
         private string toastMessage = "";
@@ -67,21 +80,22 @@ namespace OpsDeck.Desktop
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
-            Text = "OpsDeck Enterprise v2.5 — Centro de Mando Ejecutivo";
-            Size = new Size(1220, 740);
-            MinimumSize = new Size(1020, 640);
+            Text = "OpsDeck Enterprise v2.5 — Glassmorphism & 3D Depth Suite";
+            Size = new Size(1240, 750);
+            MinimumSize = new Size(1040, 660);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.None;
-            BackColor = Color.FromArgb(11, 15, 25);
-            ForeColor = Color.FromArgb(241, 245, 249);
+            BackColor = ColorCanvasBg;
+            ForeColor = ColorPureWhite;
             Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
 
-            // Inicializar historial de telemetría con valores suaves
+            // Generar historial de telemetría y barras de volumen estilo EchoFi
             Random rnd = new Random();
             for (int i = 0; i < MaxHistoryPoints; i++)
             {
-                cpuHistory.Enqueue(12f + (float)(rnd.NextDouble() * 15));
+                cpuHistory.Enqueue(15f + (float)(rnd.NextDouble() * 25));
                 ramHistory.Enqueue(46f + (float)(rnd.NextDouble() * 4));
+                volumeBars.Add(20f + (float)(rnd.NextDouble() * 70));
             }
 
             InitializeData();
@@ -92,7 +106,7 @@ namespace OpsDeck.Desktop
             telemetryTimer = new System.Windows.Forms.Timer { Interval = 1500 };
             telemetryTimer.Tick += (s, e) =>
             {
-                float nextCpu = (float)(new Random().Next(10, 36));
+                float nextCpu = (float)(new Random().Next(12, 42));
                 float nextRam = 47f + (float)(new Random().NextDouble() * 3.5);
                 cpuPercent = nextCpu;
                 ramPercent = nextRam;
@@ -103,11 +117,14 @@ namespace OpsDeck.Desktop
                 if (ramHistory.Count >= MaxHistoryPoints) ramHistory.Dequeue();
                 ramHistory.Enqueue(nextRam);
 
+                if (volumeBars.Count >= MaxHistoryPoints) volumeBars.RemoveAt(0);
+                volumeBars.Add((float)(new Random().Next(15, 95)));
+
                 Invalidate();
             };
             telemetryTimer.Start();
 
-            // Timer de Detección de Ventana Activa (cada 800ms)
+            // Timer de Ventana Activa (cada 800ms)
             windowTrackerTimer = new System.Windows.Forms.Timer { Interval = 800 };
             windowTrackerTimer.Tick += (s, e) =>
             {
@@ -132,57 +149,57 @@ namespace OpsDeck.Desktop
             };
             toastTimer.Start();
 
-            ShowToast("🚀 OpsDeck Enterprise iniciado en " + server.PrimaryLanIp + ":8620");
+            ShowToast("✦ OpsDeck Glassmorphism 3D Suite Activo en " + server.PrimaryLanIp + ":8620");
         }
 
         private void InitializeData()
         {
             defaultTiles = new List<DeckTile>
             {
-                new DeckTile("t-excel", "Excel", "Planillas & BI", "📊", "#22D3EE", "launch:excel", "Win+R"),
-                new DeckTile("t-outlook", "Outlook 365", "Bandeja Corp.", "✉️", "#38BDF8", "launch:outlook", "Win+R"),
-                new DeckTile("t-teams", "MS Teams", "Reuniones & Chat", "👥", "#818CF8", "launch:teams", "Win+R"),
-                new DeckTile("t-calc", "Calculadora", "Finanzas & CLP", "🔢", "#34D399", "launch:calc", "Win+R"),
-                new DeckTile("t-term", "Terminal PowerShell", "Consola Admin", "💻", "#F472B6", "launch:powershell", "Win+R"),
-                new DeckTile("t-chrome", "Google Chrome", "Navegación Web", "🌐", "#FB923C", "launch:chrome", "Win+R"),
-                new DeckTile("t-mute", "Silenciar Micrófono", "Teams / Zoom", "🎙️", "#EF4444", "hotkey:ctrl+shift+m", "Ctrl+Shift+M"),
-                new DeckTile("t-save", "Guardar Trabajo", "Commit / Guardar", "💾", "#A78BFA", "hotkey:ctrl+s", "Ctrl+S"),
-                new DeckTile("t-lock", "Bloquear Estación", "Seguridad Windows", "🔒", "#FBBF24", "launch:rundll32.exe user32.dll,LockWorkStation", "Win+L"),
-                new DeckTile("t-snip", "Captura Recorte", "Pantalla / Evidencia", "✂️", "#2DD4BF", "launch:snippingtool", "Win+Shift+S"),
-                new DeckTile("t-task", "Administrador Tareas", "Rendimiento PC", "⚡", "#F87171", "launch:taskmgr", "Ctrl+Shift+Esc"),
-                new DeckTile("t-exp", "Explorador Archivos", "Documentos Corp.", "📁", "#38BDF8", "launch:explorer", "Win+E")
+                new DeckTile("t-excel", "Excel BI", "Finanzas & Tablas", "📊", "#C2F4FF", "launch:excel", "Win+R"),
+                new DeckTile("t-outlook", "Outlook 365", "Bandeja Ejecutiva", "✉️", "#C6C0FF", "launch:outlook", "Win+R"),
+                new DeckTile("t-teams", "MS Teams", "Reunión & Audio", "👥", "#C2F4FF", "launch:teams", "Win+R"),
+                new DeckTile("t-calc", "Calculadora", "Moneda & CLP", "🔢", "#B1FFC2", "launch:calc", "Win+R"),
+                new DeckTile("t-term", "PowerShell", "Consola de Comandos", "💻", "#C6C0FF", "launch:powershell", "Win+R"),
+                new DeckTile("t-chrome", "Chrome Pro", "Navegador Web", "🌐", "#C2F4FF", "launch:chrome", "Win+R"),
+                new DeckTile("t-mute", "Silenciar Mic", "Micrófono Global", "🎙️", "#EF4444", "hotkey:ctrl+shift+m", "Ctrl+Shift+M"),
+                new DeckTile("t-save", "Guardar Todo", "Atajo Rápido", "💾", "#B1FFC2", "hotkey:ctrl+s", "Ctrl+S"),
+                new DeckTile("t-lock", "Bloquear PC", "Seguridad Estación", "🔒", "#C6C0FF", "launch:rundll32.exe user32.dll,LockWorkStation", "Win+L"),
+                new DeckTile("t-snip", "Recorte Pantalla", "Captura de Región", "✂️", "#C2F4FF", "launch:snippingtool", "Win+Shift+S"),
+                new DeckTile("t-task", "Admin Tareas", "Rendimiento Win32", "⚡", "#EF4444", "launch:taskmgr", "Ctrl+Shift+Esc"),
+                new DeckTile("t-exp", "Explorador", "Archivos Locales", "📁", "#C6C0FF", "launch:explorer", "Win+E")
             };
 
             excelTiles = new List<DeckTile>
             {
-                new DeckTile("ex-sum", "AutoSuma Rápida", "Fórmula Contable", "Σ", "#34D399", "macro:sum", "=SUMA()"),
-                new DeckTile("ex-filter", "Activar Filtros", "Tablas & Datos", "⚡", "#22D3EE", "macro:filter", "Ctrl+Shift+L"),
-                new DeckTile("ex-save", "Guardar Libro", "Versión Actual", "💾", "#38BDF8", "hotkey:ctrl+s", "Ctrl+S"),
-                new DeckTile("ex-chart", "Insertar Gráfico", "Reporte Ejecutivo", "📈", "#F472B6", "hotkey:keys:%{F1}", "Alt+F1"),
-                new DeckTile("ex-calc", "Recalcular Hoja", "Fórmulas & Celdas", "🔄", "#FBBF24", "hotkey:keys:{F9}", "F9"),
-                new DeckTile("ex-copy", "Copiar Formato", "Pincel de Estilo", "🎨", "#A78BFA", "hotkey:keys:^c", "Ctrl+C"),
-                new DeckTile("ex-paste", "Pegado Especial", "Solo Valores", "📋", "#2DD4BF", "hotkey:keys:^%v", "Ctrl+Alt+V"),
-                new DeckTile("ex-undo", "Deshacer Cambio", "Revertir Acción", "↩️", "#94A3B8", "hotkey:keys:^z", "Ctrl+Z")
+                new DeckTile("ex-sum", "AutoSuma Rápida", "Fórmula Contable", "Σ", "#B1FFC2", "macro:sum", "=SUMA()"),
+                new DeckTile("ex-filter", "Filtros de Tabla", "Gestión de Datos", "⚡", "#C2F4FF", "macro:filter", "Ctrl+Shift+L"),
+                new DeckTile("ex-save", "Guardar Libro", "Versión Actual", "💾", "#C6C0FF", "hotkey:ctrl+s", "Ctrl+S"),
+                new DeckTile("ex-chart", "Insertar Gráfico", "Reporte Ejecutivo", "📈", "#C2F4FF", "hotkey:keys:%{F1}", "Alt+F1"),
+                new DeckTile("ex-calc", "Recalcular Hoja", "Fórmulas & Celdas", "🔄", "#C6C0FF", "hotkey:keys:{F9}", "F9"),
+                new DeckTile("ex-copy", "Copiar Formato", "Pincel de Estilo", "🎨", "#B1FFC2", "hotkey:keys:^c", "Ctrl+C"),
+                new DeckTile("ex-paste", "Pegar Valores", "Solo Texto Plano", "📋", "#C2F4FF", "hotkey:keys:^%v", "Ctrl+Alt+V"),
+                new DeckTile("ex-undo", "Deshacer Cambio", "Revertir Acción", "↩️", "#8A8F9E", "hotkey:keys:^z", "Ctrl+Z")
             };
 
             meetingTiles = new List<DeckTile>
             {
                 new DeckTile("mt-mic", "Mute Micrófono", "Activar/Silenciar", "🎙️", "#EF4444", "hotkey:ctrl+shift+m", "Ctrl+Shift+M"),
-                new DeckTile("mt-cam", "Cámara On/Off", "Video Conferencia", "📹", "#FB923C", "hotkey:ctrl+shift+o", "Ctrl+Shift+O"),
-                new DeckTile("mt-hand", "Levantar Mano", "Participación", "✋", "#FBBF24", "hotkey:keys:^k", "Ctrl+K"),
-                new DeckTile("mt-share", "Compartir Pantalla", "Presentación", "🖥️", "#22D3EE", "hotkey:ctrl+shift+e", "Ctrl+Shift+E"),
-                new DeckTile("mt-leave", "Abandonar Llamada", "Colgar Reunión", "📞", "#F87171", "hotkey:keys:^+b", "Ctrl+Shift+B"),
-                new DeckTile("mt-chat", "Abrir Chat", "Mensajería en Vivo", "💬", "#38BDF8", "hotkey:keys:^+r", "Ctrl+Shift+R")
+                new DeckTile("mt-cam", "Cámara On/Off", "Video Conferencia", "📹", "#C2F4FF", "hotkey:ctrl+shift+o", "Ctrl+Shift+O"),
+                new DeckTile("mt-hand", "Levantar Mano", "Participación", "✋", "#C6C0FF", "hotkey:keys:^k", "Ctrl+K"),
+                new DeckTile("mt-share", "Compartir Pantalla", "Presentación", "🖥️", "#B1FFC2", "hotkey:ctrl+shift+e", "Ctrl+Shift+E"),
+                new DeckTile("mt-leave", "Colgar Reunión", "Desconectar", "📞", "#EF4444", "hotkey:keys:^+b", "Ctrl+Shift+B"),
+                new DeckTile("mt-chat", "Abrir Chat", "Mensajería en Vivo", "💬", "#C2F4FF", "hotkey:keys:^+r", "Ctrl+Shift+R")
             };
 
             itsmTiles = new List<DeckTile>
             {
-                new DeckTile("it-glpi", "GLPI Tickets", "Mesa de Ayuda", "🎫", "#38BDF8", "launch:https://glpi", "Web"),
-                new DeckTile("it-jira", "Jira ITSM", "Tablero Sprint", "📋", "#22D3EE", "launch:https://jira", "Web"),
-                new DeckTile("it-rdp", "Escritorio Remoto", "Conexión Servidores", "🖥️", "#818CF8", "launch:mstsc", "RDP"),
-                new DeckTile("it-ssh", "Consola SSH", "Admin Linux / Cloud", "⚡", "#34D399", "launch:powershell", "CLI"),
-                new DeckTile("it-ping", "Ping Gateway", "Diagnóstico Red", "📡", "#FBBF24", "launch:cmd /k ping 192.168.1.1", "CMD"),
-                new DeckTile("it-vpn", "Estado VPN", "Túnel Corporativo", "🛡️", "#2DD4BF", "launch:control netconnections", "Net")
+                new DeckTile("it-glpi", "GLPI Tickets", "Mesa de Ayuda", "🎫", "#C2F4FF", "launch:https://glpi", "Web"),
+                new DeckTile("it-jira", "Jira ITSM", "Sprint Tablero", "📋", "#C6C0FF", "launch:https://jira", "Web"),
+                new DeckTile("it-rdp", "Escritorio Remoto", "Servidores Cloud", "🖥️", "#B1FFC2", "launch:mstsc", "RDP"),
+                new DeckTile("it-ssh", "Consola SSH", "Linux / Docker", "⚡", "#C2F4FF", "launch:powershell", "CLI"),
+                new DeckTile("it-ping", "Ping Gateway", "Latencia Red", "📡", "#C6C0FF", "launch:cmd /k ping 192.168.1.1", "CMD"),
+                new DeckTile("it-vpn", "Túnel VPN", "Conexión Segura", "🛡️", "#B1FFC2", "launch:control netconnections", "Net")
             };
 
             activeTiles = defaultTiles;
@@ -215,7 +232,7 @@ namespace OpsDeck.Desktop
                 totalCommandsExecuted++;
                 BeginInvoke((Action)(() =>
                 {
-                    ShowToast("⚡ Macro remota ejecutada desde dispositivo móvil: " + id);
+                    ShowToast("✦ Remoto: Macro ejecutada desde smartphone (" + id + ")");
                     Invalidate();
                 }));
             };
@@ -228,14 +245,14 @@ namespace OpsDeck.Desktop
             try
             {
                 ContextMenuStrip menu = new ContextMenuStrip();
-                menu.Items.Add("Abrir OpsDeck Enterprise", null, (s, e) => { Show(); WindowState = FormWindowState.Normal; Activate(); });
+                menu.Items.Add("Abrir OpsDeck Glass Suite", null, (s, e) => { Show(); WindowState = FormWindowState.Normal; Activate(); });
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Salir de OpsDeck", null, (s, e) => { Close(); Application.Exit(); });
 
                 trayIcon = new NotifyIcon
                 {
                     Icon = SystemIcons.Shield,
-                    Text = "OpsDeck Enterprise v2.5 (" + server.PrimaryLanIp + ":8620)",
+                    Text = "OpsDeck Glassmorphic Suite (" + server.PrimaryLanIp + ":8620)",
                     ContextMenuStrip = menu,
                     Visible = true
                 };
@@ -286,133 +303,88 @@ namespace OpsDeck.Desktop
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // 1. TitleBar Superior Ejecutivo (Altura: 56px)
-            using (SolidBrush headerBg = new SolidBrush(Color.FromArgb(15, 23, 42)))
+            // 0. Fondo Obsidian & Orbes de Luz Ambiental (Glow Refraction Layer)
+            g.Clear(ColorCanvasBg);
+            DrawAmbientOrbs(g, Width, Height);
+
+            // 1. Barra Superior con Glassmorphism (Altura: 58px)
+            int topBarY = 12;
+            int topBarH = 54;
+            Rectangle topBarRect = new Rectangle(16, topBarY, Width - 32, topBarH);
+            DrawGlassCard(g, topBarRect, 16, ColorGlassCard, false, Color.Empty);
+
+            // Marca / Logotipo estilo EchoFi (Estrella / Diamante Luminous)
+            int brandX = topBarRect.X + 18;
+            DrawStarGlyph(g, brandX, topBarY + 17, 20, ColorIceCyan);
+
+            using (Font titleFont = new Font("Segoe UI", 12f, FontStyle.Bold))
+            using (SolidBrush textBrush = new SolidBrush(ColorPureWhite))
             {
-                g.FillRectangle(headerBg, 0, 0, Width, 56);
-            }
-            using (Pen borderPen = new Pen(Color.FromArgb(30, 41, 59), 1))
-            {
-                g.DrawLine(borderPen, 0, 56, Width, 56);
+                g.DrawString("EchoDeck", titleFont, textBrush, brandX + 28, topBarY + 16);
             }
 
-            // Marca / Logotipo Corporativo
-            using (SolidBrush logoBadge = new SolidBrush(Color.FromArgb(34, 211, 238)))
-            using (Font fLogo = new Font("Segoe UI", 9f, FontStyle.Bold))
-            using (SolidBrush bDark = new SolidBrush(Color.FromArgb(11, 15, 25)))
+            // Píldora de Búsqueda / Contexto en Glass (EchoFi Style)
+            int searchX = brandX + 140;
+            Rectangle searchRect = new Rectangle(searchX, topBarY + 11, 280, 32);
+            DrawGlassCard(g, searchRect, 10, Color.FromArgb(160, 24, 27, 38), false, Color.Empty);
+            using (Font fSearch = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+            using (Font fK = new Font("Consolas", 8.5f, FontStyle.Bold))
+            using (SolidBrush bMuted = new SolidBrush(ColorMutedSlate))
+            using (SolidBrush bK = new SolidBrush(ColorIceCyan))
             {
-                Rectangle logoRect = new Rectangle(18, 12, 32, 32);
-                DrawRoundedCard(g, logoRect, 6, logoBadge, null);
-                g.DrawString("OD", fLogo, bDark, 23, 19);
+                g.DrawString("🔍  Buscar macro o comando...", fSearch, bMuted, searchX + 12, topBarY + 19);
+                g.DrawString("Ctrl+K", fK, bK, searchX + 225, topBarY + 19);
             }
 
-            using (Font titleFont = new Font("Segoe UI", 11.5f, FontStyle.Bold))
-            using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            {
-                g.DrawString("OPSDECK ENTERPRISE", titleFont, textBrush, 58, 14);
-            }
-            using (Font subFont = new Font("Segoe UI", 8.5f, FontStyle.Regular))
-            using (SolidBrush subBrush = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            {
-                g.DrawString("v2.5 · CENTRO DE MANDO NATIVO & TELEMETRÍA PC", subFont, subBrush, 58, 33);
-            }
+            // Navegación estilo Tabs / Toggles en Cápsula de Vidrio
+            int navStartX = searchX + 300;
+            int navContainerW = 390;
+            Rectangle navContainerRect = new Rectangle(navStartX, topBarY + 11, navContainerW, 32);
+            DrawGlassCard(g, navContainerRect, 10, Color.FromArgb(140, 20, 23, 33), false, Color.Empty);
 
-            // Status Indicator Pill (Online & Active Window Context)
-            int pillX = Width - 480;
-            Rectangle pillRect = new Rectangle(pillX, 12, 320, 32);
-            using (SolidBrush pillBg = new SolidBrush(Color.FromArgb(24, 33, 47)))
-            using (Pen pillBrd = new Pen(Color.FromArgb(51, 65, 85), 1))
+            string[] shortNavs = new string[] { "Botonera", "Telemetría", "Kanban", "Touchpad", "Móvil (QR)" };
+            int tabW = navContainerW / shortNavs.Length;
+            for (int ni = 0; ni < shortNavs.Length; ni++)
             {
-                DrawRoundedCard(g, pillRect, 8, pillBg, pillBrd);
-            }
-            using (SolidBrush dotBrush = new SolidBrush(Color.FromArgb(34, 197, 94)))
-            {
-                g.FillEllipse(dotBrush, pillX + 12, 23, 10, 10);
-            }
-            using (Font pillFont = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-            using (SolidBrush pillText = new SolidBrush(Color.FromArgb(226, 232, 240)))
-            {
-                string winPreview = currentActiveWindow.Length > 22 ? currentActiveWindow.Substring(0, 20) + ".." : currentActiveWindow;
-                g.DrawString(server.PrimaryLanIp + ":8620  |  " + winPreview, pillFont, pillText, pillX + 30, 20);
-            }
+                int tabX = navStartX + ni * tabW;
+                bool isSel = ni == activeNavIndex;
+                bool isHov = ni == hoveredNavIndex;
 
-            // Window Control Buttons (Minimizar, Cerrar)
-            DrawWindowControls(g);
-
-            // 2. Navigation Rail Izquierdo (Ancho: 230px)
-            using (SolidBrush navBg = new SolidBrush(Color.FromArgb(15, 23, 42)))
-            {
-                g.FillRectangle(navBg, 0, 57, 230, Height - 57);
-            }
-            using (Pen navBorder = new Pen(Color.FromArgb(30, 41, 59), 1))
-            {
-                g.DrawLine(navBorder, 230, 57, 230, Height);
-            }
-
-            // Nav Items con Hover & Active States
-            for (int i = 0; i < navLabels.Length; i++)
-            {
-                int itemY = 74 + (i * 50);
-                bool isSelected = i == activeNavIndex;
-                bool isHovered = i == hoveredNavIndex;
-
-                Rectangle navRect = new Rectangle(10, itemY, 210, 42);
-
-                if (isSelected)
+                if (isSel)
                 {
-                    using (SolidBrush selBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
-                    using (Pen selBrd = new Pen(Color.FromArgb(34, 211, 238), 1))
-                    {
-                        DrawRoundedCard(g, navRect, 8, selBg, selBrd);
-                    }
-                    using (SolidBrush indicator = new SolidBrush(Color.FromArgb(34, 211, 238)))
-                    {
-                        g.FillRectangle(indicator, 10, itemY + 8, 4, 26);
-                    }
-                }
-                else if (isHovered)
-                {
-                    using (SolidBrush hovBg = new SolidBrush(Color.FromArgb(24, 33, 47)))
-                    {
-                        DrawRoundedCard(g, navRect, 8, hovBg, null);
-                    }
+                    Rectangle activeTabRect = new Rectangle(tabX + 2, topBarY + 13, tabW - 4, 28);
+                    DrawGlassCard(g, activeTabRect, 8, Color.FromArgb(240, 34, 38, 54), true, ColorIceCyan);
                 }
 
-                using (Font navFont = new Font("Segoe UI", 9.5f, isSelected ? FontStyle.Bold : FontStyle.Regular))
-                using (SolidBrush navText = new SolidBrush(isSelected ? Color.FromArgb(34, 211, 238) : (isHovered ? Color.White : Color.FromArgb(148, 163, 184))))
+                using (Font fTab = new Font("Segoe UI", 8.5f, isSel ? FontStyle.Bold : FontStyle.Regular))
+                using (SolidBrush bTab = new SolidBrush(isSel ? ColorIceCyan : (isHov ? ColorPureWhite : ColorMutedSlate)))
                 {
-                    g.DrawString(navLabels[i], navFont, navText, 24, itemY + 11);
+                    SizeF sz = g.MeasureString(shortNavs[ni], fTab);
+                    g.DrawString(shortNavs[ni], fTab, bTab, tabX + (tabW - sz.Width) / 2, topBarY + 19);
                 }
             }
 
-            // Tarjeta de Perfil Dinámico Activo al fondo de la barra
-            int profileCardY = Height - 92;
-            Rectangle profCardRect = new Rectangle(12, profileCardY, 206, 76);
-            using (SolidBrush pBg = new SolidBrush(Color.FromArgb(8, 11, 19)))
-            using (Pen pBrd = new Pen(Color.FromArgb(30, 41, 59), 1))
-            {
-                DrawRoundedCard(g, profCardRect, 10, pBg, pBrd);
-            }
-            using (Font pf1 = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (Font pf2 = new Font("Segoe UI", 9f, FontStyle.Bold))
-            using (SolidBrush pb1 = new SolidBrush(Color.FromArgb(34, 211, 238)))
-            using (SolidBrush pb2 = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            {
-                g.DrawString("CONTEXTO ACTIVO:", pf1, pb1, 22, profileCardY + 14);
-                string prof = currentProfileName.Length > 20 ? currentProfileName.Substring(0, 18) + ".." : currentProfileName;
-                g.DrawString(prof, pf2, pb2, 22, profileCardY + 32);
-                using (Font pf3 = new Font("Segoe UI", 7.5f, FontStyle.Regular))
-                using (SolidBrush pb3 = new SolidBrush(Color.FromArgb(148, 163, 184)))
-                {
-                    g.DrawString("Botonera adaptada en vivo", pf3, pb3, 22, profileCardY + 52);
-                }
-            }
+            // Botón Primario Blanco de Alto Contraste (EchoFi "Connect wallet" / "Acción Rápida")
+            int ctaW = 140;
+            int ctaH = 32;
+            int ctaX = topBarRect.Right - ctaW - 120;
+            ctaButtonRect = new Rectangle(ctaX, topBarY + 11, ctaW, ctaH);
+            DrawWhitePillButton(g, ctaButtonRect, "⚡ Ejecutar Deck", new Font("Segoe UI", 8.5f, FontStyle.Bold), isHoverCta);
 
-            // 3. Canvas de Contenido Principal
-            int canvasX = 248;
-            int canvasY = 72;
-            int canvasW = Width - canvasX - 18;
-            int canvasH = Height - canvasY - 18;
+            // Píldora de Estado Conectado con Glowing Mint Dot
+            int pillX = ctaButtonRect.Right + 12;
+            Rectangle statusPill = new Rectangle(pillX, topBarY + 11, 40, 32);
+            DrawGlassCard(g, statusPill, 10, Color.FromArgb(160, 24, 27, 38), false, Color.Empty);
+            DrawGlowingDot(g, pillX + 15, topBarY + 22, ColorMintGreen);
+
+            // Controles de Minimizar y Cerrar
+            DrawWindowControls(g, topBarRect.Right - 55, topBarY + 11);
+
+            // 2. Contenido de la Vista Activa
+            int canvasX = 16;
+            int canvasY = topBarRect.Bottom + 14;
+            int canvasW = Width - 32;
+            int canvasH = Height - canvasY - 16;
 
             if (activeNavIndex == 0) RenderViewBotonera(g, canvasX, canvasY, canvasW, canvasH);
             else if (activeNavIndex == 1) RenderViewMetricas(g, canvasX, canvasY, canvasW, canvasH);
@@ -420,518 +392,147 @@ namespace OpsDeck.Desktop
             else if (activeNavIndex == 3) RenderViewTouchpad(g, canvasX, canvasY, canvasW, canvasH);
             else if (activeNavIndex == 4) RenderViewEnlaceMovil(g, canvasX, canvasY, canvasW, canvasH);
 
-            // 4. Toast Notification Flotante (Elegante y animada)
+            // 3. Toast Notifier Animado
             if (!string.IsNullOrEmpty(toastMessage) && DateTime.Now <= toastExpires)
             {
                 RenderToast(g);
             }
         }
 
-        private void DrawWindowControls(Graphics g)
+        private static void DrawAmbientOrbs(Graphics g, int width, int height)
         {
-            int btnSize = 34;
-            int closeX = Width - btnSize - 12;
-            int minX = closeX - btnSize - 6;
-
-            Rectangle minRect = new Rectangle(minX, 11, btnSize, btnSize);
-            Rectangle closeRect = new Rectangle(closeX, 11, btnSize, btnSize);
-
-            // Minimize
-            using (SolidBrush minBg = new SolidBrush(isHoverMin ? Color.FromArgb(51, 65, 85) : Color.FromArgb(30, 41, 59)))
-            using (Pen p = new Pen(Color.FromArgb(203, 213, 225), 2))
+            // Orb 1: Ice Cyan Glow (#C2F4FF) en la esquina superior derecha (detrás de los gráficos)
+            int orb1Size = 540;
+            Rectangle orb1Rect = new Rectangle(width - 480, -120, orb1Size, orb1Size);
+            using (GraphicsPath p1 = new GraphicsPath())
             {
-                DrawRoundedCard(g, minRect, 6, minBg, null);
-                g.DrawLine(p, minX + 10, 28, minX + 24, 28);
+                p1.AddEllipse(orb1Rect);
+                using (PathGradientBrush pgb1 = new PathGradientBrush(p1))
+                {
+                    pgb1.CenterColor = Color.FromArgb(22, 194, 244, 255);
+                    pgb1.SurroundColors = new Color[] { Color.FromArgb(0, 9, 10, 15) };
+                    g.FillEllipse(pgb1, orb1Rect);
+                }
             }
 
-            // Close
-            using (SolidBrush closeBg = new SolidBrush(isHoverClose ? Color.FromArgb(239, 68, 68) : Color.FromArgb(30, 41, 59)))
-            using (Pen p = new Pen(Color.FromArgb(248, 250, 252), 2))
+            // Orb 2: Pastel Lavender Glow (#C6C0FF) en la esquina inferior izquierda
+            int orb2Size = 480;
+            Rectangle orb2Rect = new Rectangle(-100, height - 390, orb2Size, orb2Size);
+            using (GraphicsPath p2 = new GraphicsPath())
             {
-                DrawRoundedCard(g, closeRect, 6, closeBg, null);
-                g.DrawLine(p, closeX + 10, 17, closeX + 24, 31);
-                g.DrawLine(p, closeX + 24, 17, closeX + 10, 31);
-            }
-        }
-
-        private void RenderViewBotonera(Graphics g, int x, int y, int w, int h)
-        {
-            using (Font fTitle = new Font("Segoe UI", 13f, FontStyle.Bold))
-            using (Font fSub = new Font("Segoe UI", 9f, FontStyle.Regular))
-            using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            {
-                g.DrawString("Botonera Dinámica Táctil (Deck Ejecutivo PC)", fTitle, bWhite, x, y);
-                g.DrawString("Perfil activo: " + currentProfileName + ". Haz clic directo en cualquier tarjeta o acciónala desde tu celular.", fSub, bMuted, x, y + 26);
-            }
-
-            int startY = y + 62;
-            int cols = 4;
-            int cardW = (w - (cols - 1) * 16) / cols;
-            int cardH = 118;
-
-            var tiles = activeTiles ?? defaultTiles;
-            for (int i = 0; i < tiles.Count && i < 12; i++)
-            {
-                var t = tiles[i];
-                int col = i % cols;
-                int row = i / cols;
-                int cardX = x + col * (cardW + 16);
-                int cardY = startY + row * (cardH + 16);
-
-                bool isHovered = i == hoveredTileIndex;
-                Rectangle cardRect = new Rectangle(cardX, cardY, cardW, cardH);
-                Color accent = ColorTranslator.FromHtml(t.AccentColor);
-
-                using (SolidBrush cardBg = new SolidBrush(isHovered ? Color.FromArgb(28, 41, 65) : Color.FromArgb(20, 29, 47)))
-                using (Pen cardBorder = new Pen(isHovered ? Color.FromArgb(34, 211, 238) : Color.FromArgb(37, 51, 74), isHovered ? 1.5f : 1f))
+                p2.AddEllipse(orb2Rect);
+                using (PathGradientBrush pgb2 = new PathGradientBrush(p2))
                 {
-                    DrawRoundedCard(g, cardRect, 10, cardBg, cardBorder);
-                }
-
-                // Barra superior de acento redondeada
-                using (SolidBrush bAcc = new SolidBrush(accent))
-                {
-                    g.FillRectangle(bAcc, cardX + 10, cardY, cardW - 20, 3);
-                }
-
-                // Ícono / Glifo con fondo de micro-cápsula
-                Rectangle iconBox = new Rectangle(cardX + 14, cardY + 16, 38, 38);
-                using (SolidBrush iconBg = new SolidBrush(Color.FromArgb(11, 15, 25)))
-                {
-                    DrawRoundedCard(g, iconBox, 8, iconBg, null);
-                }
-                using (Font glyphFont = new Font("Segoe UI Emoji", 16f))
-                using (SolidBrush glyphBrush = new SolidBrush(Color.White))
-                {
-                    g.DrawString(t.IconGlyph, glyphFont, glyphBrush, cardX + 17, cardY + 20);
-                }
-
-                // Chip de Atajo de Teclado (Monospace)
-                using (Font fSc = new Font("Consolas", 8.5f, FontStyle.Bold))
-                using (SolidBrush bScBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
-                using (SolidBrush bScText = new SolidBrush(Color.FromArgb(203, 213, 225)))
-                {
-                    SizeF scSize = g.MeasureString(t.Shortcut, fSc);
-                    Rectangle scRect = new Rectangle(cardX + cardW - (int)scSize.Width - 20, cardY + 18, (int)scSize.Width + 10, 20);
-                    DrawRoundedCard(g, scRect, 4, bScBg, null);
-                    g.DrawString(t.Shortcut, fSc, bScText, scRect.X + 5, scRect.Y + 3);
-                }
-
-                // Títulos y Subtítulos
-                using (Font fLbl = new Font("Segoe UI", 10.5f, FontStyle.Bold))
-                using (Font fSub = new Font("Segoe UI", 8.5f, FontStyle.Regular))
-                using (SolidBrush bW = new SolidBrush(Color.FromArgb(248, 250, 252)))
-                using (SolidBrush bM = new SolidBrush(Color.FromArgb(148, 163, 184)))
-                {
-                    g.DrawString(t.Label, fLbl, bW, cardX + 14, cardY + 66);
-                    g.DrawString(t.SubLabel, fSub, bM, cardX + 14, cardY + 89);
+                    pgb2.CenterColor = Color.FromArgb(18, 198, 192, 255);
+                    pgb2.SurroundColors = new Color[] { Color.FromArgb(0, 9, 10, 15) };
+                    g.FillEllipse(pgb2, orb2Rect);
                 }
             }
         }
 
-        private void RenderViewMetricas(Graphics g, int x, int y, int w, int h)
+        private static void DrawStarGlyph(Graphics g, int x, int y, int size, Color color)
         {
-            using (Font fTitle = new Font("Segoe UI", 13f, FontStyle.Bold))
-            using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
+            PointF[] starPoints = new PointF[]
             {
-                g.DrawString("Centro de Mando Ejecutivo & Telemetría en Vivo", fTitle, bWhite, x, y);
-            }
-
-            int cardW = (w - 32) / 3;
-            int cardH = 130;
-            int startY = y + 36;
-
-            // 3 Tarjetas KPI Superiores
-            DrawMetricCard(g, x, startY, cardW, cardH, "USO DE CPU", ((int)cpuPercent) + "%", "16 Núcleos Lógicos", Color.FromArgb(34, 211, 238), cpuPercent / 100f);
-            DrawMetricCard(g, x + cardW + 16, startY, cardW, cardH, "MEMORIA RAM", ((int)ramPercent) + "%", "5.8 GB / 16.0 GB Asignada", Color.FromArgb(129, 140, 248), ramPercent / 100f);
-            DrawMetricCard(g, x + (cardW + 16) * 2, startY, cardW, cardH, "MACROS EJECUTADAS", totalCommandsExecuted.ToString(), "Comandos PC / Móvil hoy", Color.FromArgb(52, 211, 153), 0.82f);
-
-            // Gráfico Sparkline de Historial en Tiempo Real (Linear/Datadog Style)
-            int chartY = startY + cardH + 18;
-            int chartH = 180;
-            Rectangle chartRect = new Rectangle(x, chartY, w, chartH);
-            using (SolidBrush chartBg = new SolidBrush(Color.FromArgb(20, 29, 47)))
-            using (Pen chartBrd = new Pen(Color.FromArgb(37, 51, 74), 1))
-            {
-                DrawRoundedCard(g, chartRect, 10, chartBg, chartBrd);
-            }
-
-            using (Font fChTitle = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-            using (SolidBrush bChTitle = new SolidBrush(Color.FromArgb(226, 232, 240)))
-            {
-                g.DrawString("HISTORIAL DE CARGA DE CPU (ÚLTIMAS TELEMETRÍAS)", fChTitle, bChTitle, x + 16, chartY + 14);
-            }
-
-            // Grid lines del gráfico
-            using (Pen gridPen = new Pen(Color.FromArgb(30, 41, 59), 1))
-            {
-                for (int gl = 1; gl <= 3; gl++)
-                {
-                    int gy = chartY + 45 + gl * 30;
-                    g.DrawLine(gridPen, x + 16, gy, x + w - 16, gy);
-                }
-            }
-
-            // Curva Sparkline
-            float[] points = cpuHistory.ToArray();
-            if (points.Length >= 2)
-            {
-                PointF[] curvePoints = new PointF[points.Length];
-                float stepX = (w - 32) / (float)(MaxHistoryPoints - 1);
-                int basePlotY = chartY + chartH - 24;
-                int maxPlotH = 95;
-
-                for (int pi = 0; pi < points.Length; pi++)
-                {
-                    float px = x + 16 + pi * stepX;
-                    float py = basePlotY - (points[pi] / 100f * maxPlotH);
-                    curvePoints[pi] = new PointF(px, py);
-                }
-
-                // Área sombreada con degradado debajo de la curva
-                using (GraphicsPath fillPath = new GraphicsPath())
-                {
-                    fillPath.AddLine(curvePoints[0].X, basePlotY, curvePoints[0].X, curvePoints[0].Y);
-                    fillPath.AddCurve(curvePoints);
-                    fillPath.AddLine(curvePoints[curvePoints.Length - 1].X, basePlotY, curvePoints[0].X, basePlotY);
-
-                    using (LinearGradientBrush lgb = new LinearGradientBrush(new Point(0, chartY + 45), new Point(0, basePlotY), Color.FromArgb(70, 34, 211, 238), Color.FromArgb(0, 34, 211, 238)))
-                    {
-                        g.FillPath(lgb, fillPath);
-                    }
-                }
-
-                // Línea principal antialiased
-                using (Pen curvePen = new Pen(Color.FromArgb(34, 211, 238), 2.5f))
-                {
-                    g.DrawCurve(curvePen, curvePoints);
-                }
-            }
-
-            // Panel de Diagnóstico de Red & IPC
-            int netY = chartY + chartH + 18;
-            int netH = h - (netY - y);
-            Rectangle netRect = new Rectangle(x, netY, w, netH);
-            using (SolidBrush netBg = new SolidBrush(Color.FromArgb(20, 29, 47)))
-            using (Pen netBrd = new Pen(Color.FromArgb(37, 51, 74), 1))
-            {
-                DrawRoundedCard(g, netRect, 10, netBg, netBrd);
-            }
-
-            using (Font fSub = new Font("Segoe UI", 10.5f, FontStyle.Bold))
-            using (Font fBody = new Font("Segoe UI", 9f, FontStyle.Regular))
-            using (Font fMono = new Font("Consolas", 9f, FontStyle.Regular))
-            using (SolidBrush bW = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bM = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            using (SolidBrush bCyan = new SolidBrush(Color.FromArgb(34, 211, 238)))
-            {
-                g.DrawString("Estado de Conexión & Red Local Multi-Dispositivo", fSub, bW, x + 20, netY + 16);
-                g.DrawString("• Servidor Socket HTTP: ", fBody, bM, x + 20, netY + 44);
-                g.DrawString("http://" + server.PrimaryLanIp + ":8620 (0.0.0.0 sin privilegios)", fMono, bCyan, x + 185, netY + 44);
-
-                g.DrawString("• Descubrimiento UDP: ", fBody, bM, x + 20, netY + 70);
-                g.DrawString("Puerto 41234 activo (Difusión mDNS/LAN en tiempo real)", fMono, bCyan, x + 185, netY + 70);
-
-                g.DrawString("• Latencia Red Wi-Fi: ", fBody, bM, x + 20, netY + 96);
-                g.DrawString("< 2 ms (Red local de alta velocidad)", fMono, bW, x + 185, netY + 96);
-            }
-        }
-
-        private void DrawMetricCard(Graphics g, int x, int y, int w, int h, string title, string val, string sub, Color accent, float progress)
-        {
-            Rectangle cardRect = new Rectangle(x, y, w, h);
-            using (SolidBrush bg = new SolidBrush(Color.FromArgb(20, 29, 47)))
-            using (Pen border = new Pen(Color.FromArgb(37, 51, 74), 1))
-            {
-                DrawRoundedCard(g, cardRect, 10, bg, border);
-            }
-
-            using (SolidBrush bAcc = new SolidBrush(accent))
-            {
-                g.FillRectangle(bAcc, x + 14, y, w - 28, 3);
-            }
-
-            using (Font ft = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-            using (Font fv = new Font("Segoe UI", 20f, FontStyle.Bold))
-            using (Font fs = new Font("Segoe UI", 8.5f, FontStyle.Regular))
-            using (SolidBrush bt = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            using (SolidBrush bv = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            {
-                g.DrawString(title, ft, bt, x + 18, y + 16);
-                g.DrawString(val, fv, bv, x + 16, y + 36);
-                g.DrawString(sub, fs, bt, x + 18, y + 80);
-            }
-
-            // Barra de progreso inferior
-            int barY = y + h - 14;
-            Rectangle barBgRect = new Rectangle(x + 18, barY, w - 36, 5);
-            using (SolidBrush barBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
-            using (SolidBrush barFill = new SolidBrush(accent))
-            {
-                DrawRoundedCard(g, barBgRect, 2, barBg, null);
-                int fillW = (int)((w - 36) * Math.Max(0.05f, Math.Min(1f, progress)));
-                Rectangle barFillRect = new Rectangle(x + 18, barY, fillW, 5);
-                DrawRoundedCard(g, barFillRect, 2, barFill, null);
-            }
-        }
-
-        private void RenderViewKanban(Graphics g, int x, int y, int w, int h)
-        {
-            using (Font fTitle = new Font("Segoe UI", 13f, FontStyle.Bold))
-            using (Font fSub = new Font("Segoe UI", 9f, FontStyle.Regular))
-            using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            {
-                g.DrawString("Tablero Kanban Operativo & Triaje ITSM / IA", fTitle, bWhite, x, y);
-                g.DrawString("Requerimientos sincronizados desde Outlook 365, ServiceNow y Jira clasificados automáticamente.", fSub, bMuted, x, y + 26);
-            }
-
-            int cols = 4;
-            int colW = (w - (cols - 1) * 14) / cols;
-            int startY = y + 62;
-            int colH = h - 72;
-
-            string[] colTitles = new string[] { "URGENTES (P1)", "EN CURSO", "EN REVISIÓN", "COMPLETADAS" };
-            Color[] colColors = new Color[]
-            {
-                Color.FromArgb(239, 68, 68),
-                Color.FromArgb(56, 189, 248),
-                Color.FromArgb(245, 158, 11),
-                Color.FromArgb(34, 197, 94)
+                new PointF(x + size / 2f, y),
+                new PointF(x + size * 0.65f, y + size * 0.35f),
+                new PointF(x + size, y + size / 2f),
+                new PointF(x + size * 0.65f, y + size * 0.65f),
+                new PointF(x + size / 2f, y + size),
+                new PointF(x + size * 0.35f, y + size * 0.65f),
+                new PointF(x, y + size / 2f),
+                new PointF(x + size * 0.35f, y + size * 0.35f)
             };
-
-            for (int c = 0; c < cols; c++)
+            using (SolidBrush sb = new SolidBrush(color))
             {
-                int colX = x + c * (colW + 14);
-                Rectangle colRect = new Rectangle(colX, startY, colW, colH);
-
-                using (SolidBrush colBg = new SolidBrush(Color.FromArgb(15, 23, 42)))
-                using (Pen colBorder = new Pen(Color.FromArgb(30, 41, 59), 1))
-                {
-                    DrawRoundedCard(g, colRect, 10, colBg, colBorder);
-                }
-
-                // Cabecera de Columna
-                using (SolidBrush bBar = new SolidBrush(colColors[c]))
-                using (Font fc = new Font("Segoe UI", 9f, FontStyle.Bold))
-                using (SolidBrush bct = new SolidBrush(Color.FromArgb(248, 250, 252)))
-                {
-                    g.FillRectangle(bBar, colX + 10, startY, colW - 20, 3);
-                    g.DrawString(colTitles[c], fc, bct, colX + 14, startY + 14);
-                }
-
-                // Renderizado de Tarjetas de Tareas
-                TaskStatus targetStatus = (TaskStatus)c;
-                int cardY = startY + 46;
-
-                foreach (var t in tasks)
-                {
-                    if (t.Status == targetStatus)
-                    {
-                        Rectangle cardRect = new Rectangle(colX + 10, cardY, colW - 20, 104);
-                        using (SolidBrush cardBg = new SolidBrush(Color.FromArgb(24, 33, 47)))
-                        using (Pen cardBrd = new Pen(Color.FromArgb(51, 65, 85), 1))
-                        {
-                            DrawRoundedCard(g, cardRect, 8, cardBg, cardBrd);
-                        }
-
-                        using (Font fCode = new Font("Consolas", 9f, FontStyle.Bold))
-                        using (Font fT = new Font("Segoe UI", 8.5f, FontStyle.Regular))
-                        using (Font fBadge = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-                        using (SolidBrush bc = new SolidBrush(colColors[c]))
-                        using (SolidBrush bw = new SolidBrush(Color.FromArgb(241, 245, 249)))
-                        using (SolidBrush bm = new SolidBrush(Color.FromArgb(148, 163, 184)))
-                        {
-                            g.DrawString(t.Code, fCode, bc, colX + 20, cardY + 12);
-
-                            // Fuente Badge
-                            Rectangle badgeRect = new Rectangle(colX + colW - 105, cardY + 10, 85, 20);
-                            using (SolidBrush bbg = new SolidBrush(Color.FromArgb(15, 23, 42)))
-                            {
-                                DrawRoundedCard(g, badgeRect, 4, bbg, null);
-                            }
-                            g.DrawString(t.SourceBadge, fBadge, bm, badgeRect.X + 6, badgeRect.Y + 3);
-
-                            // Título de tarea con corte seguro
-                            string displayTitle = t.Title.Length > 48 ? t.Title.Substring(0, 45) + "..." : t.Title;
-                            g.DrawString(displayTitle, fT, bw, new RectangleF(colX + 20, cardY + 36, colW - 40, 38));
-
-                            // SLA & Prioridad al pie
-                            g.DrawString("⏱ SLA: " + t.DueTime + "  ·  " + t.Project, fBadge, bm, colX + 20, cardY + 78);
-                        }
-
-                        cardY += 114;
-                    }
-                }
+                g.FillPolygon(sb, starPoints);
             }
         }
 
-        private void RenderViewTouchpad(Graphics g, int x, int y, int w, int h)
+        private static void DrawGlowingDot(Graphics g, int x, int y, Color coreColor)
         {
-            using (Font fTitle = new Font("Segoe UI", 13f, FontStyle.Bold))
-            using (Font fSub = new Font("Segoe UI", 9f, FontStyle.Regular))
-            using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
+            using (SolidBrush halo2 = new SolidBrush(Color.FromArgb(30, coreColor.R, coreColor.G, coreColor.B)))
             {
-                g.DrawString("Lienzo de Puntero Remoto & Touchpad de Precisión", fTitle, bWhite, x, y);
-                g.DrawString("Control total del mouse de este PC desde la pantalla táctil de tu celular con 0 ms de latencia.", fSub, bMuted, x, y + 26);
+                g.FillEllipse(halo2, x - 5, y - 5, 20, 20);
             }
-
-            int boxW = w - 40;
-            int boxH = h - 90;
-            Rectangle boxRect = new Rectangle(x + 20, y + 66, boxW, boxH);
-
-            using (SolidBrush bg = new SolidBrush(Color.FromArgb(15, 23, 42)))
-            using (Pen border = new Pen(Color.FromArgb(34, 211, 238), 1.5f))
+            using (SolidBrush halo1 = new SolidBrush(Color.FromArgb(70, coreColor.R, coreColor.G, coreColor.B)))
             {
-                DrawRoundedCard(g, boxRect, 12, bg, border);
+                g.FillEllipse(halo1, x - 2, y - 2, 14, 14);
             }
-
-            // Cuadrícula sutil de referencia táctil
-            using (Pen gridPen = new Pen(Color.FromArgb(24, 33, 47), 1))
+            using (SolidBrush core = new SolidBrush(coreColor))
             {
-                for (int gx = boxRect.X + 40; gx < boxRect.Right; gx += 40)
-                {
-                    g.DrawLine(gridPen, gx, boxRect.Y + 10, gx, boxRect.Bottom - 10);
-                }
-                for (int gy = boxRect.Y + 40; gy < boxRect.Bottom; gy += 40)
-                {
-                    g.DrawLine(gridPen, boxRect.X + 10, gy, boxRect.Right - 10, gy);
-                }
-            }
-
-            using (Font fBig = new Font("Segoe UI", 15f, FontStyle.Bold))
-            using (Font fSub2 = new Font("Segoe UI", 9.5f, FontStyle.Regular))
-            using (Font fCode = new Font("Consolas", 10.5f, FontStyle.Bold))
-            using (SolidBrush bW = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bM = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            using (SolidBrush bCyan = new SolidBrush(Color.FromArgb(34, 211, 238)))
-            {
-                g.DrawString("SUPERFICIE TÁCTIL ACTIVA", fBig, bW, x + 50, y + 105);
-                g.DrawString("Desliza el dedo en tu celular en la pestaña 'Touchpad' para desplazar el cursor del PC en tiempo real.", fSub2, bM, x + 50, y + 145);
-
-                g.DrawString("• Un Toque = Clic Izquierdo Primario", fCode, bCyan, x + 50, y + 185);
-                g.DrawString("• Doble Toque = Doble Clic de Selección", fCode, bCyan, x + 50, y + 215);
-                g.DrawString("• Toque con Dos Dedos = Clic Derecho Secundario", fCode, bCyan, x + 50, y + 245);
-                g.DrawString("• Deslizar 2 Dedos = Scroll Vertical de Rueda", fCode, bCyan, x + 50, y + 275);
-
-                // Botones simulados en la base del touchpad
-                int btnW = (boxW - 60) / 2;
-                int btnH = 46;
-                int btnY = boxRect.Bottom - btnH - 20;
-
-                Rectangle leftBtn = new Rectangle(boxRect.X + 20, btnY, btnW, btnH);
-                Rectangle rightBtn = new Rectangle(boxRect.X + 40 + btnW, btnY, btnW, btnH);
-
-                using (SolidBrush btnBg = new SolidBrush(Color.FromArgb(24, 33, 47)))
-                using (Pen btnBrd = new Pen(Color.FromArgb(51, 65, 85), 1))
-                {
-                    DrawRoundedCard(g, leftBtn, 8, btnBg, btnBrd);
-                    DrawRoundedCard(g, rightBtn, 8, btnBg, btnBrd);
-                }
-
-                g.DrawString("CLIC IZQUIERDO", fCode, bW, leftBtn.X + btnW / 2 - 55, leftBtn.Y + 14);
-                g.DrawString("CLIC DERECHO", fCode, bW, rightBtn.X + btnW / 2 - 50, rightBtn.Y + 14);
+                g.FillEllipse(core, x, y, 10, 10);
             }
         }
 
-        private void RenderViewEnlaceMovil(Graphics g, int x, int y, int w, int h)
-        {
-            using (Font fTitle = new Font("Segoe UI", 13f, FontStyle.Bold))
-            using (Font fSub = new Font("Segoe UI", 9f, FontStyle.Regular))
-            using (SolidBrush bWhite = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bMuted = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            {
-                g.DrawString("Enlace Móvil Inmediato & Portal de Descarga de APK", fTitle, bWhite, x, y);
-                g.DrawString("Escanea el código QR estándar (ISO/IEC 18004) con cualquier teléfono para descargar la app complementaria.", fSub, bMuted, x, y + 26);
-            }
-
-            int qrSize = 224;
-            int qrX = x + 30;
-            int qrY = y + 74;
-
-            string mobileDownloadUrl = "http://" + server.PrimaryLanIp + ":8620/mobile";
-
-            // Contenedor blanco redondeado del QR para máximo contraste óptico
-            Rectangle qrContainer = new Rectangle(qrX - 12, qrY - 12, qrSize + 24, qrSize + 24);
-            using (SolidBrush bWhite = new SolidBrush(Color.White))
-            using (Pen borderPen = new Pen(Color.FromArgb(34, 211, 238), 2f))
-            {
-                DrawRoundedCard(g, qrContainer, 12, bWhite, borderPen);
-            }
-
-            using (Bitmap qr = GenerateQrMatrix(mobileDownloadUrl, qrSize))
-            {
-                g.DrawImage(qr, qrX, qrY);
-            }
-
-            // Panel Lateral de Información y Botones
-            int infoX = qrX + qrSize + 50;
-            using (Font fH = new Font("Segoe UI", 11.5f, FontStyle.Bold))
-            using (Font fB = new Font("Segoe UI", 9.5f, FontStyle.Regular))
-            using (Font fCode = new Font("Consolas", 11f, FontStyle.Bold))
-            using (SolidBrush bW = new SolidBrush(Color.FromArgb(248, 250, 252)))
-            using (SolidBrush bM = new SolidBrush(Color.FromArgb(148, 163, 184)))
-            using (SolidBrush bCyan = new SolidBrush(Color.FromArgb(34, 211, 238)))
-            {
-                g.DrawString("1. Escanear con la Cámara del Celular", fH, bW, infoX, qrY);
-                g.DrawString("Apunta tu cámara o Google Lens. Descargará OpsDeck Mobile al instante:", fB, bM, infoX, qrY + 28);
-                g.DrawString(mobileDownloadUrl, fCode, bCyan, infoX, qrY + 54);
-
-                // Botón de Copiar URL al portapapeles
-                copyUrlRect = new Rectangle(infoX, qrY + 82, 190, 32);
-                using (SolidBrush copyBg = new SolidBrush(isHoverCopyUrl ? Color.FromArgb(6, 182, 212) : Color.FromArgb(34, 211, 238)))
-                using (Font fBtn = new Font("Segoe UI", 9f, FontStyle.Bold))
-                using (SolidBrush bBtnText = new SolidBrush(Color.FromArgb(11, 15, 25)))
-                {
-                    DrawRoundedCard(g, copyUrlRect, 6, copyBg, null);
-                    g.DrawString("📋 Copiar Enlace Directo", fBtn, bBtnText, copyUrlRect.X + 16, copyUrlRect.Y + 8);
-                }
-
-                g.DrawString("2. Apertura Directa en Chrome Móvil", fH, bW, infoX, qrY + 130);
-                g.DrawString("Conecta tu celular a la misma red Wi-Fi y visita:", fB, bM, infoX, qrY + 154);
-                g.DrawString("http://" + server.PrimaryLanIp + ":8620/download/apk", fCode, bCyan, infoX, qrY + 178);
-
-                g.DrawString("3. Diagnóstico de Infraestructura Local", fH, bW, infoX, qrY + 218);
-                using (Font fDiag = new Font("Segoe UI", 9f, FontStyle.Regular))
-                using (SolidBrush bGreen = new SolidBrush(Color.FromArgb(34, 197, 94)))
-                {
-                    g.DrawString("✓ Servidor HTTP nativo activo en 0.0.0.0:8620 (Sin permisos admin)", fDiag, bGreen, infoX, qrY + 242);
-                    g.DrawString("✓ Descubrimiento UDP activo en 41234 (Transmisión automática)", fDiag, bGreen, infoX, qrY + 264);
-                    g.DrawString("✓ Paquete APK compilado, alineado a 4 bytes y firmado con scheme v2/v3", fDiag, bGreen, infoX, qrY + 286);
-                }
-            }
-        }
-
-        private void RenderToast(Graphics g)
-        {
-            using (Font fToast = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-            {
-                SizeF msgSize = g.MeasureString(toastMessage, fToast);
-                int tw = (int)msgSize.Width + 40;
-                int th = 42;
-                int tx = Width - tw - 24;
-                int ty = Height - th - 24;
-
-                Rectangle toastRect = new Rectangle(tx, ty, tw, th);
-                using (SolidBrush tBg = new SolidBrush(Color.FromArgb(30, 41, 59)))
-                using (Pen tBrd = new Pen(Color.FromArgb(34, 211, 238), 1.5f))
-                using (SolidBrush tText = new SolidBrush(Color.FromArgb(248, 250, 252)))
-                {
-                    DrawRoundedCard(g, toastRect, 8, tBg, tBrd);
-                    g.DrawString(toastMessage, fToast, tText, tx + 16, ty + 12);
-                }
-            }
-        }
-
-        private static void DrawRoundedCard(Graphics g, Rectangle rect, int radius, Brush fillBrush, Pen borderPen)
+        private static void DrawSoftShadow(Graphics g, Rectangle rect, int radius, int depth, int alpha)
         {
             if (rect.Width <= 0 || rect.Height <= 0) return;
-            using (GraphicsPath path = CreateRoundedRectangle(rect, radius))
+            for (int i = depth; i >= 1; i--)
             {
-                if (fillBrush != null) g.FillPath(fillBrush, path);
-                if (borderPen != null) g.DrawPath(borderPen, path);
+                Rectangle sRect = new Rectangle(rect.X - i, rect.Y - i + (depth * 3 / 2), rect.Width + i * 2, rect.Height + i * 2);
+                using (GraphicsPath sp = CreateRoundedRectangle(sRect, radius + i))
+                using (SolidBrush sb = new SolidBrush(Color.FromArgb(alpha / depth * (depth - i + 1), 0, 0, 0)))
+                {
+                    g.FillPath(sb, sp);
+                }
+            }
+        }
+
+        private static void DrawGlassCard(Graphics g, Rectangle rect, int radius, Color glassFill, bool hasGlow, Color glowColor)
+        {
+            if (rect.Width <= 0 || rect.Height <= 0) return;
+
+            // 1. Sombra 3D espacial suave
+            DrawSoftShadow(g, rect, radius, 3, 30);
+
+            // 2. Halo de Glow exterior si aplica
+            if (hasGlow)
+            {
+                using (GraphicsPath gp = CreateRoundedRectangle(new Rectangle(rect.X - 2, rect.Y - 2, rect.Width + 4, rect.Height + 4), radius + 2))
+                using (Pen glowPen = new Pen(Color.FromArgb(50, glowColor.R, glowColor.G, glowColor.B), 3f))
+                {
+                    g.DrawPath(glowPen, gp);
+                }
+            }
+
+            // 3. Relleno Frosted Glass con translucidez
+            using (GraphicsPath cardPath = CreateRoundedRectangle(rect, radius))
+            {
+                using (SolidBrush fillBrush = new SolidBrush(glassFill))
+                {
+                    g.FillPath(fillBrush, cardPath);
+                }
+
+                // 4. Borde 135° Rim Light (luz rasante)
+                Color rimTopLeft = hasGlow ? glowColor : Color.FromArgb(55, 255, 255, 255);
+                Color rimBottomRight = Color.FromArgb(8, 255, 255, 255);
+
+                using (LinearGradientBrush rimBrush = new LinearGradientBrush(
+                    new Point(rect.X, rect.Y),
+                    new Point(rect.Right, rect.Bottom),
+                    rimTopLeft,
+                    rimBottomRight))
+                using (Pen rimPen = new Pen(rimBrush, hasGlow ? 1.5f : 1.1f))
+                {
+                    g.DrawPath(rimPen, cardPath);
+                }
+            }
+        }
+
+        private static void DrawWhitePillButton(Graphics g, Rectangle rect, string text, Font font, bool isHovered)
+        {
+            DrawSoftShadow(g, rect, rect.Height / 2, 2, 40);
+            Color btnColor = isHovered ? Color.FromArgb(230, 240, 255) : ColorPureWhite;
+            using (GraphicsPath p = CreateRoundedRectangle(rect, rect.Height / 2))
+            using (SolidBrush sb = new SolidBrush(btnColor))
+            {
+                g.FillPath(sb, p);
+            }
+            using (SolidBrush tb = new SolidBrush(Color.FromArgb(9, 10, 15)))
+            {
+                SizeF sz = g.MeasureString(text, font);
+                g.DrawString(text, font, tb, rect.X + (rect.Width - sz.Width) / 2, rect.Y + (rect.Height - sz.Height) / 2);
             }
         }
 
@@ -950,6 +551,463 @@ namespace OpsDeck.Desktop
             return path;
         }
 
+        private void DrawWindowControls(Graphics g, int x, int y)
+        {
+            int btnSize = 32;
+            Rectangle minRect = new Rectangle(x, y, btnSize, btnSize);
+            Rectangle closeRect = new Rectangle(x + btnSize + 4, y, btnSize, btnSize);
+
+            DrawGlassCard(g, minRect, 8, isHoverMin ? Color.FromArgb(180, 38, 43, 60) : Color.FromArgb(120, 20, 23, 33), isHoverMin, ColorIceCyan);
+            DrawGlassCard(g, closeRect, 8, isHoverClose ? Color.FromArgb(200, 239, 68, 68) : Color.FromArgb(120, 20, 23, 33), isHoverClose, Color.FromArgb(239, 68, 68));
+
+            using (Pen pMin = new Pen(Color.FromArgb(203, 213, 225), 2))
+            using (Pen pClose = new Pen(ColorPureWhite, 2))
+            {
+                g.DrawLine(pMin, minRect.X + 9, minRect.Y + 20, minRect.X + 23, minRect.Y + 20);
+                g.DrawLine(pClose, closeRect.X + 9, closeRect.Y + 10, closeRect.X + 23, closeRect.Y + 22);
+                g.DrawLine(pClose, closeRect.X + 23, closeRect.Y + 10, closeRect.X + 9, closeRect.Y + 22);
+            }
+        }
+
+        private void RenderViewBotonera(Graphics g, int x, int y, int w, int h)
+        {
+            // Barra superior de Perfil Activo con Glassmorphism
+            int profH = 64;
+            Rectangle profRect = new Rectangle(x, y, w, profH);
+            DrawGlassCard(g, profRect, 16, ColorGlassCard, false, Color.Empty);
+
+            using (Font f1 = new Font("Segoe UI", 12f, FontStyle.Bold))
+            using (Font f2 = new Font("Segoe UI", 9f, FontStyle.Regular))
+            using (SolidBrush bWhite = new SolidBrush(ColorPureWhite))
+            using (SolidBrush bSlate = new SolidBrush(ColorMutedSlate))
+            {
+                g.DrawString("Botonera Dinámica Táctil (Deck 3D Glass)", f1, bWhite, x + 20, y + 14);
+                g.DrawString("Contexto Activo: " + currentProfileName + "  ·  Haz clic directo o pulsa en tu móvil con respuesta háptica.", f2, bSlate, x + 20, y + 38);
+            }
+
+            // Tag de ventana activa a la derecha
+            Rectangle winTagRect = new Rectangle(profRect.Right - 310, y + 16, 290, 32);
+            DrawGlassCard(g, winTagRect, 10, Color.FromArgb(160, 26, 29, 41), false, Color.Empty);
+            using (Font fWin = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+            using (SolidBrush bCyan = new SolidBrush(ColorIceCyan))
+            {
+                string winTxt = currentActiveWindow.Length > 26 ? currentActiveWindow.Substring(0, 24) + ".." : currentActiveWindow;
+                g.DrawString("🪟 " + winTxt, fWin, bCyan, winTagRect.X + 12, y + 24);
+            }
+
+            // Grid de Botones con Glassmorphism, 3D Depth y Glow en Hover
+            int startY = y + profH + 16;
+            int cols = 4;
+            int cardW = (w - (cols - 1) * 16) / cols;
+            int cardH = 124;
+
+            var tiles = activeTiles ?? defaultTiles;
+            for (int i = 0; i < tiles.Count && i < 12; i++)
+            {
+                var t = tiles[i];
+                int col = i % cols;
+                int row = i / cols;
+                int cardX = x + col * (cardW + 16);
+                int cardY = startY + row * (cardH + 16);
+
+                bool isHovered = i == hoveredTileIndex;
+                Rectangle cardRect = new Rectangle(cardX, cardY, cardW, cardH);
+                Color accent = ColorTranslator.FromHtml(t.AccentColor);
+
+                Color cardGlassFill = isHovered ? ColorGlassElevated : ColorGlassCard;
+                DrawGlassCard(g, cardRect, 14, cardGlassFill, isHovered, ColorIceCyan);
+
+                // Micro-cápsula del Ícono con fondo oscuro
+                Rectangle iconBox = new Rectangle(cardX + 16, cardY + 16, 42, 42);
+                DrawGlassCard(g, iconBox, 10, Color.FromArgb(180, 12, 14, 20), false, Color.Empty);
+
+                using (Font glyphFont = new Font("Segoe UI Emoji", 17f))
+                using (SolidBrush glyphBrush = new SolidBrush(ColorPureWhite))
+                {
+                    g.DrawString(t.IconGlyph, glyphFont, glyphBrush, cardX + 21, cardY + 22);
+                }
+
+                // Chip de Atajo de Teclado (Consolas) estilo EchoFi
+                using (Font fSc = new Font("Consolas", 8.5f, FontStyle.Bold))
+                using (SolidBrush bScText = new SolidBrush(ColorMutedSlate))
+                {
+                    SizeF scSize = g.MeasureString(t.Shortcut, fSc);
+                    Rectangle scRect = new Rectangle(cardX + cardW - (int)scSize.Width - 22, cardY + 18, (int)scSize.Width + 12, 22);
+                    DrawGlassCard(g, scRect, 6, Color.FromArgb(140, 16, 18, 26), false, Color.Empty);
+                    g.DrawString(t.Shortcut, fSc, bScText, scRect.X + 6, scRect.Y + 4);
+                }
+
+                // Títulos y Subtítulos con tipografía Neo-Grotesque
+                using (Font fLbl = new Font("Segoe UI", 11f, FontStyle.Bold))
+                using (Font fSub = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+                using (SolidBrush bW = new SolidBrush(ColorPureWhite))
+                using (SolidBrush bM = new SolidBrush(ColorMutedSlate))
+                {
+                    g.DrawString(t.Label, fLbl, bW, cardX + 16, cardY + 70);
+                    g.DrawString(t.SubLabel, fSub, bM, cardX + 16, cardY + 94);
+                }
+            }
+        }
+
+        private void RenderViewMetricas(Graphics g, int x, int y, int w, int h)
+        {
+            // Fila Superior: 3 Métricas KPI estilo EchoFi (Price, 24H Change, Volume)
+            int kpiW = (w - 32) / 3;
+            int kpiH = 110;
+
+            DrawEchoFiKpi(g, x, y, kpiW, kpiH, "USO DE CPU EN TIEMPO REAL", ((int)cpuPercent) + "%", "+2.4% vs promedio", ColorMintGreen, true);
+            DrawEchoFiKpi(g, x + kpiW + 16, y, kpiW, kpiH, "MEMORIA RAM ASIGNADA", ((int)ramPercent) + "%", "5.8 GB / 16.0 GB", ColorIceCyan, false);
+            DrawEchoFiKpi(g, x + (kpiW + 16) * 2, y, kpiW, kpiH, "MACROS & ACCIONES EJECUTADAS", totalCommandsExecuted.ToString(), "42 hoy  ·  0 ms latencia", ColorLavender, false);
+
+            // Gráfico Principal de Telemetría (Exactamente como el gráfico de EchoFi)
+            int chartY = y + kpiH + 16;
+            int chartH = h - kpiH - 16;
+            Rectangle chartRect = new Rectangle(x, chartY, w, chartH);
+            DrawGlassCard(g, chartRect, 18, ColorGlassCard, false, Color.Empty);
+
+            // Cabecera del Gráfico con Pills y Toggles
+            using (Font fChT = new Font("Segoe UI", 12f, FontStyle.Bold))
+            using (SolidBrush bW = new SolidBrush(ColorPureWhite))
+            {
+                g.DrawString("Carga de Procesador & Throughput en Vivo", fChT, bW, x + 24, chartY + 20);
+            }
+
+            // Pills de Rango de Tiempo (1D, 7D, 1M, 1Y, All) estilo EchoFi
+            int timePillX = chartRect.Right - 280;
+            Rectangle timePillContainer = new Rectangle(timePillX, chartY + 16, 260, 30);
+            DrawGlassCard(g, timePillContainer, 8, Color.FromArgb(140, 20, 23, 33), false, Color.Empty);
+            string[] timeFilters = new string[] { "1m", "5m", "15m", "1H", "Todo" };
+            int tpW = 260 / timeFilters.Length;
+            for (int tfi = 0; tfi < timeFilters.Length; tfi++)
+            {
+                bool isSel = tfi == 0;
+                if (isSel)
+                {
+                    Rectangle actPill = new Rectangle(timePillX + tfi * tpW + 2, chartY + 18, tpW - 4, 26);
+                    DrawGlassCard(g, actPill, 6, Color.FromArgb(220, 36, 40, 56), true, ColorIceCyan);
+                }
+                using (Font fTp = new Font("Segoe UI", 8f, isSel ? FontStyle.Bold : FontStyle.Regular))
+                using (SolidBrush bTp = new SolidBrush(isSel ? ColorIceCyan : ColorMutedSlate))
+                {
+                    SizeF sz = g.MeasureString(timeFilters[tfi], fTp);
+                    g.DrawString(timeFilters[tfi], fTp, bTp, timePillX + tfi * tpW + (tpW - sz.Width) / 2, chartY + 23);
+                }
+            }
+
+            // Grid Lines del Gráfico (sutiles y precisas)
+            int plotX = x + 30;
+            int plotW = w - 60;
+            int plotY = chartY + 70;
+            int plotH = chartH - 150;
+
+            using (Pen gridPen = new Pen(Color.FromArgb(20, 255, 255, 255), 1))
+            {
+                gridPen.DashStyle = DashStyle.Dash;
+                for (int gl = 0; gl <= 4; gl++)
+                {
+                    int gy = plotY + gl * (plotH / 4);
+                    g.DrawLine(gridPen, plotX, gy, plotX + plotW, gy);
+                }
+            }
+
+            // 1. Curva Neon Sparkline con Glow (#C2F4FF Ice Cyan)
+            float[] points = cpuHistory.ToArray();
+            if (points.Length >= 2)
+            {
+                PointF[] curvePoints = new PointF[points.Length];
+                float stepX = plotW / (float)(MaxHistoryPoints - 1);
+                int basePlotY = plotY + plotH;
+
+                for (int pi = 0; pi < points.Length; pi++)
+                {
+                    float px = plotX + pi * stepX;
+                    float py = basePlotY - (points[pi] / 100f * plotH);
+                    curvePoints[pi] = new PointF(px, py);
+                }
+
+                // Sombreado Glass degradado bajo la curva
+                using (GraphicsPath fillPath = new GraphicsPath())
+                {
+                    fillPath.AddLine(curvePoints[0].X, basePlotY, curvePoints[0].X, curvePoints[0].Y);
+                    fillPath.AddCurve(curvePoints);
+                    fillPath.AddLine(curvePoints[curvePoints.Length - 1].X, basePlotY, curvePoints[0].X, basePlotY);
+
+                    using (LinearGradientBrush lgb = new LinearGradientBrush(
+                        new Point(0, plotY),
+                        new Point(0, basePlotY),
+                        Color.FromArgb(60, ColorIceCyan.R, ColorIceCyan.G, ColorIceCyan.B),
+                        Color.FromArgb(0, ColorIceCyan.R, ColorIceCyan.G, ColorIceCyan.B)))
+                    {
+                        g.FillPath(lgb, fillPath);
+                    }
+                }
+
+                // Aura de Glow amplia
+                using (Pen glowPen = new Pen(Color.FromArgb(50, ColorIceCyan.R, ColorIceCyan.G, ColorIceCyan.B), 6f))
+                {
+                    g.DrawCurve(glowPen, curvePoints);
+                }
+
+                // Línea Neón nítida de 2px
+                using (Pen corePen = new Pen(ColorIceCyan, 2f))
+                {
+                    g.DrawCurve(corePen, curvePoints);
+                }
+
+                // Tooltip Flotante con Glassmorphism sobre el último punto
+                PointF lastPt = curvePoints[curvePoints.Length - 1];
+                DrawGlowingDot(g, (int)lastPt.X - 5, (int)lastPt.Y - 5, ColorIceCyan);
+
+                Rectangle tooltipRect = new Rectangle((int)lastPt.X - 110, (int)lastPt.Y - 55, 110, 44);
+                DrawGlassCard(g, tooltipRect, 10, Color.FromArgb(240, 24, 28, 40), true, ColorIceCyan);
+                using (Font fTt1 = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                using (Font fTt2 = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+                using (SolidBrush bSl = new SolidBrush(ColorMutedSlate))
+                using (SolidBrush bWh = new SolidBrush(ColorPureWhite))
+                {
+                    g.DrawString("CPU ACTUAL", fTt1, bSl, tooltipRect.X + 10, tooltipRect.Y + 8);
+                    g.DrawString(Math.Round(cpuPercent, 1) + "% · 16 Cores", fTt2, bWh, tooltipRect.X + 10, tooltipRect.Y + 22);
+                }
+            }
+
+            // 2. Barras de Volumen de Actividad en Pastel Lavender (#C6C0FF) estilo EchoFi
+            int barAreaY = plotY + plotH + 12;
+            int barAreaH = chartH - (barAreaY - chartY) - 18;
+            float barStepX = plotW / (float)volumeBars.Count;
+            float barWidth = Math.Max(4f, barStepX - 4f);
+
+            for (int bi = 0; bi < volumeBars.Count; bi++)
+            {
+                float bx = plotX + bi * barStepX;
+                float bh = (volumeBars[bi] / 100f) * barAreaH;
+                float by = barAreaY + barAreaH - bh;
+
+                RectangleF bRect = new RectangleF(bx, by, barWidth, bh);
+                using (SolidBrush bBrush = new SolidBrush(Color.FromArgb(140, ColorLavender.R, ColorLavender.G, ColorLavender.B)))
+                {
+                    g.FillRectangle(bBrush, bRect);
+                }
+            }
+        }
+
+        private void DrawEchoFiKpi(Graphics g, int x, int y, int w, int h, string title, string val, string sub, Color accent, bool showTrend)
+        {
+            Rectangle cardRect = new Rectangle(x, y, w, h);
+            DrawGlassCard(g, cardRect, 16, ColorGlassCard, false, Color.Empty);
+
+            using (Font ft = new Font("Segoe UI", 8f, FontStyle.Bold))
+            using (Font fv = new Font("Segoe UI", 18f, FontStyle.Bold))
+            using (Font fs = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+            using (SolidBrush bt = new SolidBrush(ColorMutedSlate))
+            using (SolidBrush bv = new SolidBrush(ColorPureWhite))
+            using (SolidBrush bs = new SolidBrush(accent))
+            {
+                g.DrawString(title, ft, bt, x + 20, y + 18);
+                g.DrawString(val, fv, bv, x + 18, y + 38);
+                g.DrawString(sub, fs, bs, x + 20, y + 74);
+            }
+        }
+
+        private void RenderViewKanban(Graphics g, int x, int y, int w, int h)
+        {
+            int cols = 4;
+            int colW = (w - (cols - 1) * 16) / cols;
+            int startY = y;
+            int colH = h;
+
+            string[] colTitles = new string[] { "URGENTES (P1)", "EN CURSO", "EN REVISIÓN", "COMPLETADAS" };
+            Color[] colColors = new Color[]
+            {
+                Color.FromArgb(239, 68, 68),
+                ColorIceCyan,
+                ColorLavender,
+                ColorMintGreen
+            };
+
+            for (int c = 0; c < cols; c++)
+            {
+                int colX = x + c * (colW + 16);
+                Rectangle colRect = new Rectangle(colX, startY, colW, colH);
+                DrawGlassCard(g, colRect, 16, ColorGlassCard, false, Color.Empty);
+
+                // Cabecera de Columna en Glass
+                using (SolidBrush bBar = new SolidBrush(colColors[c]))
+                using (Font fc = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+                using (SolidBrush bct = new SolidBrush(ColorPureWhite))
+                {
+                    g.FillRectangle(bBar, colX + 16, startY, colW - 32, 3);
+                    g.DrawString(colTitles[c], fc, bct, colX + 18, startY + 16);
+                }
+
+                // Renderizado de Tarjetas de Tareas con 3D Depth
+                TaskStatus targetStatus = (TaskStatus)c;
+                int cardY = startY + 52;
+
+                foreach (var t in tasks)
+                {
+                    if (t.Status == targetStatus)
+                    {
+                        Rectangle cardRect = new Rectangle(colX + 12, cardY, colW - 24, 112);
+                        DrawGlassCard(g, cardRect, 12, ColorGlassElevated, false, Color.Empty);
+
+                        using (Font fCode = new Font("Consolas", 9f, FontStyle.Bold))
+                        using (Font fT = new Font("Segoe UI", 9f, FontStyle.Regular))
+                        using (Font fBadge = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                        using (SolidBrush bc = new SolidBrush(colColors[c]))
+                        using (SolidBrush bw = new SolidBrush(ColorPureWhite))
+                        using (SolidBrush bm = new SolidBrush(ColorMutedSlate))
+                        {
+                            g.DrawString(t.Code, fCode, bc, colX + 22, cardY + 14);
+
+                            // Fuente Badge
+                            Rectangle badgeRect = new Rectangle(colX + colW - 110, cardY + 12, 86, 20);
+                            DrawGlassCard(g, badgeRect, 6, Color.FromArgb(160, 14, 16, 24), false, Color.Empty);
+                            g.DrawString(t.SourceBadge, fBadge, bm, badgeRect.X + 8, badgeRect.Y + 3);
+
+                            // Título con corte seguro
+                            string displayTitle = t.Title.Length > 44 ? t.Title.Substring(0, 42) + "..." : t.Title;
+                            g.DrawString(displayTitle, fT, bw, new RectangleF(colX + 22, cardY + 38, colW - 44, 40));
+
+                            // SLA
+                            g.DrawString("⏱ SLA: " + t.DueTime + "  ·  " + t.Project, fBadge, bm, colX + 22, cardY + 84);
+                        }
+
+                        cardY += 124;
+                    }
+                }
+            }
+        }
+
+        private void RenderViewTouchpad(Graphics g, int x, int y, int w, int h)
+        {
+            Rectangle boxRect = new Rectangle(x, y, w, h);
+            DrawGlassCard(g, boxRect, 18, ColorGlassCard, true, ColorIceCyan);
+
+            // Cuadrícula sutil de referencia espacial táctil
+            using (Pen gridPen = new Pen(Color.FromArgb(15, 255, 255, 255), 1))
+            {
+                for (int gx = boxRect.X + 50; gx < boxRect.Right; gx += 50)
+                {
+                    g.DrawLine(gridPen, gx, boxRect.Y + 16, gx, boxRect.Bottom - 16);
+                }
+                for (int gy = boxRect.Y + 50; gy < boxRect.Bottom; gy += 50)
+                {
+                    g.DrawLine(gridPen, boxRect.X + 16, gy, boxRect.Right - 16, gy);
+                }
+            }
+
+            using (Font fBig = new Font("Segoe UI", 16f, FontStyle.Bold))
+            using (Font fSub2 = new Font("Segoe UI", 9.5f, FontStyle.Regular))
+            using (Font fCode = new Font("Consolas", 10.5f, FontStyle.Bold))
+            using (SolidBrush bW = new SolidBrush(ColorPureWhite))
+            using (SolidBrush bM = new SolidBrush(ColorMutedSlate))
+            using (SolidBrush bCyan = new SolidBrush(ColorIceCyan))
+            {
+                g.DrawString("Lienzo de Puntero Remoto con Aceleración 3D", fBig, bW, x + 40, y + 36);
+                g.DrawString("Desliza el dedo en tu smartphone para controlar el cursor del PC en tiempo real con 0 ms de latencia.", fSub2, bM, x + 40, y + 74);
+
+                g.DrawString("• Un Toque = Clic Izquierdo Primario", fCode, bCyan, x + 40, y + 120);
+                g.DrawString("• Doble Toque = Selección / Abrir Ventana", fCode, bCyan, x + 40, y + 150);
+                g.DrawString("• Toque con Dos Dedos = Menú Contextual (Clic Derecho)", fCode, bCyan, x + 40, y + 180);
+                g.DrawString("• Deslizar 2 Dedos = Rueda de Scroll Vertical", fCode, bCyan, x + 40, y + 210);
+
+                // Botones Glass en la base del touchpad
+                int btnW = (w - 100) / 2;
+                int btnH = 54;
+                int btnY = boxRect.Bottom - btnH - 32;
+
+                Rectangle leftBtn = new Rectangle(boxRect.X + 40, btnY, btnW, btnH);
+                Rectangle rightBtn = new Rectangle(boxRect.X + 60 + btnW, btnY, btnW, btnH);
+
+                DrawGlassCard(g, leftBtn, 14, ColorGlassElevated, false, Color.Empty);
+                DrawGlassCard(g, rightBtn, 14, ColorGlassElevated, false, Color.Empty);
+
+                g.DrawString("CLIC IZQUIERDO", fCode, bW, leftBtn.X + btnW / 2 - 58, leftBtn.Y + 18);
+                g.DrawString("CLIC DERECHO", fCode, bW, rightBtn.X + btnW / 2 - 50, rightBtn.Y + 18);
+            }
+        }
+
+        private void RenderViewEnlaceMovil(Graphics g, int x, int y, int w, int h)
+        {
+            Rectangle mainRect = new Rectangle(x, y, w, h);
+            DrawGlassCard(g, mainRect, 18, ColorGlassCard, false, Color.Empty);
+
+            int qrSize = 224;
+            int qrX = x + 40;
+            int qrY = y + 40;
+
+            string mobileDownloadUrl = "http://" + server.PrimaryLanIp + ":8620/mobile";
+
+            // Contenedor blanco redondeado del QR para máximo contraste óptico
+            Rectangle qrContainer = new Rectangle(qrX - 14, qrY - 14, qrSize + 28, qrSize + 28);
+            DrawSoftShadow(g, qrContainer, 16, 3, 35);
+            using (SolidBrush bWhite = new SolidBrush(Color.White))
+            using (Pen borderPen = new Pen(ColorIceCyan, 2f))
+            {
+                using (GraphicsPath p = CreateRoundedRectangle(qrContainer, 16))
+                {
+                    g.FillPath(bWhite, p);
+                    g.DrawPath(borderPen, p);
+                }
+            }
+
+            using (Bitmap qr = GenerateQrMatrix(mobileDownloadUrl, qrSize))
+            {
+                g.DrawImage(qr, qrX, qrY);
+            }
+
+            // Panel de Instrucciones y Botones con Glassmorphism
+            int infoX = qrX + qrSize + 60;
+            using (Font fH = new Font("Segoe UI", 12f, FontStyle.Bold))
+            using (Font fB = new Font("Segoe UI", 9.5f, FontStyle.Regular))
+            using (Font fCode = new Font("Consolas", 11f, FontStyle.Bold))
+            using (SolidBrush bW = new SolidBrush(ColorPureWhite))
+            using (SolidBrush bM = new SolidBrush(ColorMutedSlate))
+            using (SolidBrush bCyan = new SolidBrush(ColorIceCyan))
+            {
+                g.DrawString("1. Escanear con la Cámara de tu Smartphone", fH, bW, infoX, qrY);
+                g.DrawString("Apunta con la cámara o Google Lens. Descargará OpsDeck Mobile al instante:", fB, bM, infoX, qrY + 28);
+                g.DrawString(mobileDownloadUrl, fCode, bCyan, infoX, qrY + 54);
+
+                // Botón Blanco de Alto Contraste para Copiar Enlace
+                copyUrlRect = new Rectangle(infoX, qrY + 84, 210, 36);
+                DrawWhitePillButton(g, copyUrlRect, "📋 Copiar Enlace Directo", new Font("Segoe UI", 9f, FontStyle.Bold), isHoverCopyUrl);
+
+                g.DrawString("2. Apertura Directa en Chrome Móvil", fH, bW, infoX, qrY + 140);
+                g.DrawString("Conecta tu celular a la misma red Wi-Fi y visita:", fB, bM, infoX, qrY + 166);
+                g.DrawString("http://" + server.PrimaryLanIp + ":8620/download/apk", fCode, bCyan, infoX, qrY + 190);
+
+                g.DrawString("3. Diagnóstico de Infraestructura Local", fH, bW, infoX, qrY + 236);
+                using (Font fDiag = new Font("Segoe UI", 9f, FontStyle.Regular))
+                using (SolidBrush bGreen = new SolidBrush(ColorMintGreen))
+                {
+                    g.DrawString("✓ Servidor HTTP nativo activo en 0.0.0.0:8620 (Sin permisos admin)", fDiag, bGreen, infoX, qrY + 262);
+                    g.DrawString("✓ Descubrimiento UDP activo en 41234 (Transmisión automática)", fDiag, bGreen, infoX, qrY + 286);
+                    g.DrawString("✓ Paquete APK compilado, alineado a 4 bytes y firmado con scheme v2/v3", fDiag, bGreen, infoX, qrY + 310);
+                }
+            }
+        }
+
+        private void RenderToast(Graphics g)
+        {
+            using (Font fToast = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            {
+                SizeF msgSize = g.MeasureString(toastMessage, fToast);
+                int tw = (int)msgSize.Width + 44;
+                int th = 44;
+                int tx = Width - tw - 24;
+                int ty = Height - th - 24;
+
+                Rectangle toastRect = new Rectangle(tx, ty, tw, th);
+                DrawGlassCard(g, toastRect, 12, Color.FromArgb(240, 24, 28, 42), true, ColorIceCyan);
+
+                using (SolidBrush tText = new SolidBrush(ColorPureWhite))
+                {
+                    g.DrawString(toastMessage, fToast, tText, tx + 18, ty + 13);
+                }
+            }
+        }
+
         private Bitmap GenerateQrMatrix(string payload, int size)
         {
             try
@@ -960,7 +1018,7 @@ namespace OpsDeck.Desktop
                     {
                         using (QRCoder.QRCode qr = new QRCoder.QRCode(data))
                         {
-                            Bitmap raw = qr.GetGraphic(8, Color.FromArgb(11, 15, 25), Color.White, true);
+                            Bitmap raw = qr.GetGraphic(8, Color.FromArgb(9, 10, 15), Color.White, true);
                             Bitmap scaled = new Bitmap(raw, new Size(size, size));
                             raw.Dispose();
                             return scaled;
@@ -995,46 +1053,51 @@ namespace OpsDeck.Desktop
             bool prevHovClose = isHoverClose;
             bool prevHovMin = isHoverMin;
             bool prevHovCopy = isHoverCopyUrl;
+            bool prevHovCta = isHoverCta;
+
+            int topBarY = 12;
+            int topBarH = 54;
+            Rectangle topBarRect = new Rectangle(16, topBarY, Width - 32, topBarH);
 
             // Window Controls Hover
-            int btnSize = 34;
-            int closeX = Width - btnSize - 12;
-            int minX = closeX - btnSize - 6;
+            int btnSize = 32;
+            int ctrlX = topBarRect.Right - 55;
+            isHoverMin = (e.X >= ctrlX && e.X <= ctrlX + btnSize && e.Y >= topBarY + 11 && e.Y <= topBarY + 11 + btnSize);
+            isHoverClose = (e.X >= ctrlX + btnSize + 4 && e.X <= ctrlX + btnSize * 2 + 4 && e.Y >= topBarY + 11 && e.Y <= topBarY + 11 + btnSize);
 
-            isHoverClose = (e.X >= closeX && e.X <= closeX + btnSize && e.Y >= 11 && e.Y <= 45);
-            isHoverMin = (e.X >= minX && e.X <= minX + btnSize && e.Y >= 11 && e.Y <= 45);
-
-            // Nav Rail Hover
+            // Nav Tabs Hover
+            int searchX = topBarRect.X + 18 + 20 + 140;
+            int navStartX = searchX + 300;
+            int navContainerW = 390;
             hoveredNavIndex = -1;
-            if (e.X >= 10 && e.X <= 220)
+            if (e.X >= navStartX && e.X <= navStartX + navContainerW && e.Y >= topBarY + 11 && e.Y <= topBarY + 43)
             {
-                for (int i = 0; i < navLabels.Length; i++)
-                {
-                    int itemY = 74 + (i * 50);
-                    if (e.Y >= itemY && e.Y <= itemY + 42)
-                    {
-                        hoveredNavIndex = i;
-                        break;
-                    }
-                }
+                int tabW = navContainerW / navLabels.Length;
+                int idx = (e.X - navStartX) / tabW;
+                if (idx >= 0 && idx < navLabels.Length) hoveredNavIndex = idx;
             }
+
+            // CTA Button Hover
+            isHoverCta = ctaButtonRect.Contains(e.Location);
 
             // Botonera Tile Hover
             hoveredTileIndex = -1;
-            if (activeNavIndex == 0 && e.Y >= 134)
+            if (activeNavIndex == 0)
             {
+                int canvasX = 16;
+                int canvasY = topBarRect.Bottom + 14;
+                int startY = canvasY + 64 + 16;
                 int cols = 4;
-                int canvasX = 248;
-                int canvasW = Width - canvasX - 18;
+                int canvasW = Width - 32;
                 int cardW = (canvasW - (cols - 1) * 16) / cols;
-                int cardH = 118;
+                int cardH = 124;
 
                 for (int i = 0; i < (activeTiles != null ? activeTiles.Count : 0) && i < 12; i++)
                 {
                     int col = i % cols;
                     int row = i / cols;
                     int cardX = canvasX + col * (cardW + 16);
-                    int cardY = 134 + row * (cardH + 16);
+                    int cardY = startY + row * (cardH + 16);
 
                     if (e.X >= cardX && e.X <= cardX + cardW && e.Y >= cardY && e.Y <= cardY + cardH)
                     {
@@ -1047,7 +1110,7 @@ namespace OpsDeck.Desktop
             // Copy URL Hover
             isHoverCopyUrl = (activeNavIndex == 4 && copyUrlRect.Contains(e.Location));
 
-            if (hoveredTileIndex != -1 || hoveredNavIndex != -1 || isHoverClose || isHoverMin || isHoverCopyUrl)
+            if (hoveredTileIndex != -1 || hoveredNavIndex != -1 || isHoverClose || isHoverMin || isHoverCopyUrl || isHoverCta)
             {
                 Cursor = Cursors.Hand;
             }
@@ -1057,7 +1120,8 @@ namespace OpsDeck.Desktop
             }
 
             if (prevHovNav != hoveredNavIndex || prevHovTile != hoveredTileIndex ||
-                prevHovClose != isHoverClose || prevHovMin != isHoverMin || prevHovCopy != isHoverCopyUrl)
+                prevHovClose != isHoverClose || prevHovMin != isHoverMin ||
+                prevHovCopy != isHoverCopyUrl || prevHovCta != isHoverCta)
             {
                 Invalidate();
             }
@@ -1067,56 +1131,67 @@ namespace OpsDeck.Desktop
         {
             base.OnMouseClick(e);
 
+            int topBarY = 12;
+            int topBarH = 54;
+            Rectangle topBarRect = new Rectangle(16, topBarY, Width - 32, topBarH);
+
             // Window Controls Clicks
-            int btnSize = 34;
-            int closeX = Width - btnSize - 12;
-            int minX = closeX - btnSize - 6;
-
-            if (e.Y >= 11 && e.Y <= 45)
+            int btnSize = 32;
+            int ctrlX = topBarRect.Right - 55;
+            if (e.X >= ctrlX + btnSize + 4 && e.X <= ctrlX + btnSize * 2 + 4 && e.Y >= topBarY + 11 && e.Y <= topBarY + 11 + btnSize)
             {
-                if (e.X >= closeX && e.X <= closeX + btnSize)
+                Close();
+                Application.Exit();
+                return;
+            }
+            if (e.X >= ctrlX && e.X <= ctrlX + btnSize && e.Y >= topBarY + 11 && e.Y <= topBarY + 11 + btnSize)
+            {
+                WindowState = FormWindowState.Minimized;
+                return;
+            }
+
+            // Nav Tabs Click
+            int searchX = topBarRect.X + 18 + 20 + 140;
+            int navStartX = searchX + 300;
+            int navContainerW = 390;
+            if (e.X >= navStartX && e.X <= navStartX + navContainerW && e.Y >= topBarY + 11 && e.Y <= topBarY + 43)
+            {
+                int tabW = navContainerW / navLabels.Length;
+                int idx = (e.X - navStartX) / tabW;
+                if (idx >= 0 && idx < navLabels.Length)
                 {
-                    Close();
-                    Application.Exit();
-                    return;
-                }
-                if (e.X >= minX && e.X <= minX + btnSize)
-                {
-                    WindowState = FormWindowState.Minimized;
+                    activeNavIndex = idx;
+                    Invalidate();
                     return;
                 }
             }
 
-            // Nav Rail Clicks
-            if (e.X >= 10 && e.X <= 220)
+            // CTA Button Click
+            if (ctaButtonRect.Contains(e.Location))
             {
-                for (int i = 0; i < navLabels.Length; i++)
-                {
-                    int itemY = 74 + (i * 50);
-                    if (e.Y >= itemY && e.Y <= itemY + 42)
-                    {
-                        activeNavIndex = i;
-                        Invalidate();
-                        return;
-                    }
-                }
+                activeNavIndex = 0; // Abre la botonera
+                ShowToast("⚡ Panel de Macros Activo");
+                Invalidate();
+                return;
             }
 
-            // View 1 (Botonera) Tile Clicks
-            if (activeNavIndex == 0 && e.Y >= 134)
+            // Botonera Tile Click
+            if (activeNavIndex == 0)
             {
+                int canvasX = 16;
+                int canvasY = topBarRect.Bottom + 14;
+                int startY = canvasY + 64 + 16;
                 int cols = 4;
-                int canvasX = 248;
-                int canvasW = Width - canvasX - 18;
+                int canvasW = Width - 32;
                 int cardW = (canvasW - (cols - 1) * 16) / cols;
-                int cardH = 118;
+                int cardH = 124;
 
                 for (int i = 0; i < (activeTiles != null ? activeTiles.Count : 0) && i < 12; i++)
                 {
                     int col = i % cols;
                     int row = i / cols;
                     int cardX = canvasX + col * (cardW + 16);
-                    int cardY = 134 + row * (cardH + 16);
+                    int cardY = startY + row * (cardH + 16);
 
                     if (e.X >= cardX && e.X <= cardX + cardW && e.Y >= cardY && e.Y <= cardY + cardH)
                     {
@@ -1138,21 +1213,21 @@ namespace OpsDeck.Desktop
                         }
 
                         totalCommandsExecuted++;
-                        ShowToast("⚡ Acción ejecutada: " + tile.Label + " (" + tile.Shortcut + ")");
+                        ShowToast("✦ Acción ejecutada: " + tile.Label + " (" + tile.Shortcut + ")");
                         Invalidate();
                         return;
                     }
                 }
             }
 
-            // View 5: Copiar URL
+            // Copy URL Click
             if (activeNavIndex == 4 && copyUrlRect.Contains(e.Location))
             {
                 try
                 {
                     string url = "http://" + server.PrimaryLanIp + ":8620/mobile";
                     Clipboard.SetText(url);
-                    ShowToast("📋 ¡Enlace copiado al portapapeles de Windows!");
+                    ShowToast("📋 ¡Enlace copiado al portapapeles!");
                 }
                 catch { }
             }
@@ -1161,7 +1236,7 @@ namespace OpsDeck.Desktop
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            if (e.Button == MouseButtons.Left && e.Y <= 56)
+            if (e.Button == MouseButtons.Left && e.Y <= 68)
             {
                 isDragging = true;
                 dragCursorPoint = Cursor.Position;
